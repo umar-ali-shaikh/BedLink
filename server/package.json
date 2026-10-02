@@ -17,7 +17,8 @@
     "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\" \"*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"tests/**/*.js\" \"*.js\"",
     "hospitals": "node src/utils/hospitals.js",
-    "demo:purge": "node src/utils/purgeDemo.js"
+    "demo:purge": "node src/utils/purgeDemo.js",
+    "admin": "node src/utils/admin.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

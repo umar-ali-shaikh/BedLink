@@ -107,7 +107,19 @@ the moment it's approved.
 
 Admin login comes from env: `ADMIN_EMAIL` + `ADMIN_PASSWORD` create that admin at startup (or
 reset its password). Setting `ADMIN_EMAIL=admin@bedlink.demo` with a new password rotates the
-public demo admin. The same actions exist on the command line:
+public demo admin.
+
+Or write an admin straight into MongoDB (uses `MONGO_URI` from `server/.env`; the password is
+prompted, hidden, min 10 characters):
+
+```bash
+cd server
+npm run admin -- create you@example.com "Your Name"   # create, or reset password if it exists
+npm run admin -- list                                  # all admins
+npm run admin -- disable you@example.com               # block an admin
+```
+
+The same verification actions exist on the command line:
 
 ```bash
 cd server
