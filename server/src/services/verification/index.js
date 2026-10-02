@@ -10,7 +10,12 @@ import { emit } from '../notification/index.js';
 
 export const DECISIONS = Object.freeze({ VERIFY: 'VERIFY', REJECT: 'REJECT' });
 
-const statusFilter = (status) => (status && status !== 'ALL' ? { verificationStatus: status } : {});
+/** Accounts created before verification existed have no field: they count as VERIFIED (schema default). */
+const statusFilter = (status) => {
+  if (!status || status === 'ALL') return {};
+  if (status === VERIFICATION_STATUS.VERIFIED) return { verificationStatus: { $in: [status, null] } };
+  return { verificationStatus: status };
+};
 
 /** Tell admins the queue changed, and the account itself that its status changed. */
 export function emitVerificationUpdate({ kind, id, status, accountRoom }) {
