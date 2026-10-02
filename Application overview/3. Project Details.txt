@@ -1,0 +1,8 @@
+3. Project Details
+
+Project Title: BedLink - Real-Time Emergency Bed Matching for Ambulances
+
+Short Description:
+BedLink is a live web platform that connects ambulance crews with the nearest hospital that has the right bed (ICU, ventilator, oxygen, cardiac, burns and more) at that moment. Hospital nurses update bed counts in under 10 seconds with one tap per bed type on a mobile-friendly screen, while the ambulance dispatch screen takes the patient's needs and location and ranks hospitals by bed match, estimated travel time, data freshness and current load, showing how many minutes old every listing is. The chosen hospital must accept or reject within 2 minutes; on acceptance the bed is held for the incoming ambulance, and on rejection or timeout the next-best hospital is offered automatically, all updated in real time over WebSockets. An admin verification desk approves every hospital and ambulance before it can go live, keeping the network genuine and cutting the time lost driving a critical patient from hospital to hospital.
+
+Live App: https://bed-link-pi.vercel.app
