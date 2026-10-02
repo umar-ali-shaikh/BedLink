@@ -8,25 +8,30 @@ import { AMBULANCE_TYPES, PHONE_PATTERN, VEHICLE_NUMBER_PATTERN, normalisePhone,
 import { ROUTES } from '../../constants/routes';
 import { errorMessage } from '../../services/api';
 import { cn } from '../../utils/cn';
+import { useGoogleSignup } from '../../features/auth/useGoogleSignup';
+import { GoogleSignupBlock } from '../../features/auth/GoogleSignupBlock';
 
 const EMPTY = { name: '', phone: '', email: '', password: '', confirm: '', vehicleNumber: '', ambulanceType: 'ALS', organization: '' };
 
-function validate(f) {
+function validate(f, google) {
   const e = {};
   if (f.name.trim().length < 2) e.name = 'Enter your full name';
   if (!PHONE_PATTERN.test(normalisePhone(f.phone))) e.phone = 'Enter a valid 10-digit mobile number';
   if (!/^\S+@\S+\.\S+$/.test(f.email.trim())) e.email = 'Enter a valid email';
   if (!VEHICLE_NUMBER_PATTERN.test(normaliseVehicle(f.vehicleNumber))) e.vehicleNumber = 'e.g. MH01AB1234';
-  const pw = PASSWORD_RULE(f.password);
-  if (pw) e.password = pw;
-  if (f.confirm !== f.password) e.confirm = 'Passwords do not match';
+  if (!google) {
+    const pw = PASSWORD_RULE(f.password);
+    if (pw) e.password = pw;
+    if (f.confirm !== f.password) e.confirm = 'Passwords do not match';
+  }
   return e;
 }
 
 export function RegisterAmbulancePage() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState(EMPTY);
+  const { google, accept, clear } = useGoogleSignup((g) => setForm((f) => ({ ...f, name: f.name || g.name, email: g.email })));
+  const [form, setForm] = useState(() => ({ ...EMPTY, name: google?.name ?? '', email: google?.email ?? '' }));
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -34,22 +39,22 @@ export function RegisterAmbulancePage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    const found = validate(form);
+    const found = validate(form, google);
     setErrors(found);
     setFormError('');
     if (Object.keys(found).length) return;
     setBusy(true);
     try {
-      await register('ambulance', {
+      const user = await register('ambulance', {
         name: form.name.trim(),
         email: form.email.trim(),
-        password: form.password,
+        ...(google ? { googleCredential: google.credential } : { password: form.password }),
         phone: normalisePhone(form.phone),
         vehicleNumber: normaliseVehicle(form.vehicleNumber),
         ambulanceType: form.ambulanceType,
         ...(form.organization.trim() ? { organization: form.organization.trim() } : {}),
       });
-      navigate(ROUTES.DISPATCHER_DASHBOARD, { replace: true });
+      navigate(user.emailVerified === false ? ROUTES.VERIFY_EMAIL : ROUTES.DISPATCHER_DASHBOARD, { replace: true });
     } catch (err) {
       const fields = serverFieldErrors(err);
       setErrors(fields);
@@ -64,6 +69,7 @@ export function RegisterAmbulancePage() {
 
   return (
     <RegisterShell title="Register ambulance" subtitle="For ambulance crews and drivers. Our team verifies your vehicle, then you can request beds." back={ROUTES.REGISTER}>
+      <GoogleSignupBlock google={google} onCredential={accept} onClear={clear} />
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Field id="name" label="Full name" error={errors.name}>
           {input('name', { autoComplete: 'name' })}
@@ -101,8 +107,9 @@ export function RegisterAmbulancePage() {
           {input('organization', { placeholder: 'e.g. 108 Emergency Service' })}
         </Field>
         <Field id="email" label="Email (your login)" error={errors.email}>
-          {input('email', { type: 'email', autoComplete: 'email' })}
+          {input('email', { type: 'email', autoComplete: 'email', readOnly: !!google, className: cn('input h-11', google && 'bg-surface-muted text-text-muted') })}
         </Field>
+        {!google && (
         <div className="grid sm:grid-cols-2 gap-4">
           <Field id="password" label="Password" error={errors.password} hint="8+ characters with a number">
             {input('password', { type: 'password', autoComplete: 'new-password' })}
@@ -111,6 +118,7 @@ export function RegisterAmbulancePage() {
             {input('confirm', { type: 'password', autoComplete: 'new-password' })}
           </Field>
         </div>
+        )}
         {formError && (
           <p role="alert" className="text-small text-danger bg-danger-soft rounded-md px-3 py-2">
             {formError}

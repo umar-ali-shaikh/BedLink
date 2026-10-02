@@ -9,12 +9,41 @@ import { logger } from '../../utils/logger.js';
 import { describeUser, toAuthUser } from './index.js';
 import { hashPassword } from './password.js';
 import { signToken } from './token.js';
+import crypto from 'node:crypto';
+import { User } from '../../models/index.js';
 import { emitVerificationUpdate } from '../verification/index.js';
+import { sendFirstCode } from './emailVerification.js';
+import { verifyGoogleCredential } from './google.js';
 
 const duplicate = (path, message) => new AppError('DUPLICATE_RESOURCE', message, undefined, [{ path, message }]);
 
 function assertEnabled() {
   if (!env.REGISTRATION_ENABLED) throw new AppError('FORBIDDEN', 'Registration is closed. Contact the BedLink team.');
+}
+
+/**
+ * Login credentials for a new account. With a Google credential the email is already proven
+ * (no code needed) and a password is optional; otherwise the email must be confirmed with a code
+ * unless EMAIL_VERIFICATION=off.
+ */
+async function credentialsFor({ email, password, googleCredential }, emailPath) {
+  if (googleCredential) {
+    const google = await verifyGoogleCredential(googleCredential);
+    if (google.email !== email.toLowerCase()) {
+      throw new AppError('VALIDATION_ERROR', undefined, undefined, [
+        { path: emailPath, message: `Use the Google account's email (${google.email})` },
+      ]);
+    }
+    if (await User.exists({ googleId: google.googleId })) {
+      throw duplicate(emailPath, 'This Google account is already registered — sign in instead');
+    }
+    return {
+      passwordHash: await hashPassword(password ?? crypto.randomBytes(32).toString('hex')),
+      googleId: google.googleId,
+      emailVerified: true,
+    };
+  }
+  return { passwordHash: await hashPassword(password), emailVerified: env.EMAIL_VERIFICATION === 'off' };
 }
 
 async function session(userDoc) {
@@ -39,25 +68,36 @@ function mapDuplicateKey(err) {
  * sign in, can't request beds) until an admin verifies it, unless AMBULANCE_AUTO_VERIFY=true.
  * Vehicle numbers are unique so one ambulance can't register twice.
  */
-export async function registerAmbulance({ name, email, password, phone, vehicleNumber, ambulanceType, organization }) {
+export async function registerAmbulance({
+  name,
+  email,
+  password,
+  googleCredential,
+  phone,
+  vehicleNumber,
+  ambulanceType,
+  organization,
+}) {
   assertEnabled();
   if (await userRepo.existsByEmail(email)) throw duplicate('email', 'An account with this email already exists');
   if (await userRepo.existsByVehicle(vehicleNumber))
     throw duplicate('vehicleNumber', 'This ambulance is already registered');
 
+  const credentials = await credentialsFor({ email, password, googleCredential }, 'email');
   try {
     const user = await userRepo.create({
       name,
       email,
       phone,
       role: ROLES.DISPATCHER,
-      passwordHash: await hashPassword(password),
+      ...credentials,
       ambulance: { vehicleNumber, ambulanceType, organization: organization ?? '' },
       verificationStatus: env.AMBULANCE_AUTO_VERIFY ? VERIFICATION_STATUS.VERIFIED : VERIFICATION_STATUS.PENDING,
       verifiedAt: env.AMBULANCE_AUTO_VERIFY ? new Date() : null,
       verificationNote: env.AMBULANCE_AUTO_VERIFY ? 'Automatically verified (AMBULANCE_AUTO_VERIFY)' : '',
     });
     logger.info('register.ambulance', { userId: user._id.toString() });
+    if (!user.emailVerified) await sendFirstCode(user._id);
     emitVerificationUpdate({ kind: 'ambulance', id: user._id.toString(), status: user.verificationStatus });
     return session(user);
   } catch (err) {
@@ -72,7 +112,7 @@ export async function registerAmbulance({ name, email, password, phone, vehicleN
  * (`npm run hospitals -- verify <id>`), unless HOSPITAL_AUTO_VERIFY=true.
  * The contact person gets a HOSPITAL account right away so they can set up beds.
  */
-export async function registerHospital({ hospital, contact }) {
+export async function registerHospital({ hospital, contact, googleCredential }) {
   assertEnabled();
   if (await userRepo.existsByEmail(contact.email))
     throw duplicate('contact.email', 'An account with this email already exists');
@@ -89,6 +129,7 @@ export async function registerHospital({ hospital, contact }) {
   });
   if (twin) throw duplicate('hospital.name', 'A hospital with this name is already registered at this location');
 
+  const credentials = await credentialsFor({ ...contact, googleCredential }, 'contact.email');
   const verified = env.HOSPITAL_AUTO_VERIFY;
   const { coordinates, ...fields } = hospital;
   let created;
@@ -108,8 +149,9 @@ export async function registerHospital({ hospital, contact }) {
       phone: hospital.phone,
       role: ROLES.HOSPITAL,
       hospitalId: created._id,
-      passwordHash: await hashPassword(contact.password),
+      ...credentials,
     });
+    if (!user.emailVerified) await sendFirstCode(user._id);
     logger.info('register.hospital', { hospitalId: created._id.toString(), verified });
     emitVerificationUpdate({ kind: 'hospital', id: created._id.toString(), status: created.verificationStatus });
     return session(user);

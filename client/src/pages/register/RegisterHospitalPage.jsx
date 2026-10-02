@@ -11,6 +11,8 @@ import { ROUTES } from '../../constants/routes';
 import { config } from '../../config';
 import { errorMessage } from '../../services/api';
 import { cn } from '../../utils/cn';
+import { useGoogleSignup } from '../../features/auth/useGoogleSignup';
+import { GoogleSignupBlock } from '../../features/auth/GoogleSignupBlock';
 
 const EMPTY = {
   name: '',
@@ -31,7 +33,7 @@ const EMPTY = {
 
 const validEmail = (v) => /^\S+@\S+\.\S+$/.test(v.trim());
 
-function validate(f) {
+function validate(f, google) {
   const e = {};
   if (f.name.trim().length < 3) e.name = 'Enter the hospital name';
   if (!REGISTRATION_NUMBER_PATTERN.test(f.registrationNumber.trim().toUpperCase()))
@@ -43,9 +45,11 @@ function validate(f) {
   if (!Number.isFinite(+f.lat) || !Number.isFinite(+f.lng) || f.lat === '' || f.lng === '') e.location = 'Pick the hospital on the map';
   if (f.contactName.trim().length < 2) e.contactName = 'Enter your name';
   if (!validEmail(f.email)) e.email = 'Enter a valid email';
-  const pw = PASSWORD_RULE(f.password);
-  if (pw) e.password = pw;
-  if (f.confirm !== f.password) e.confirm = 'Passwords do not match';
+  if (!google) {
+    const pw = PASSWORD_RULE(f.password);
+    if (pw) e.password = pw;
+    if (f.confirm !== f.password) e.confirm = 'Passwords do not match';
+  }
   if (!f.declaration) e.declaration = 'Please confirm';
   return e;
 }
@@ -85,7 +89,10 @@ function Section({ n, title, children }) {
 export function RegisterHospitalPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState(EMPTY);
+  const { google, accept, clear } = useGoogleSignup((g) =>
+    setForm((f) => ({ ...f, contactName: f.contactName || g.name, email: g.email }))
+  );
+  const [form, setForm] = useState(() => ({ ...EMPTY, contactName: google?.name ?? '', email: google?.email ?? '' }));
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -109,7 +116,7 @@ export function RegisterHospitalPage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    const found = validate(form);
+    const found = validate(form, google);
     setErrors(found);
     setFormError('');
     if (Object.keys(found).length) {
@@ -118,7 +125,7 @@ export function RegisterHospitalPage() {
     }
     setBusy(true);
     try {
-      await register('hospital', {
+      const user = await register('hospital', {
         hospital: {
           name: form.name.trim(),
           address: form.address.trim(),
@@ -129,9 +136,10 @@ export function RegisterHospitalPage() {
           phone: normalisePhone(form.phone),
           email: form.hospitalEmail.trim(),
         },
-        contact: { name: form.contactName.trim(), email: form.email.trim(), password: form.password },
+        contact: { name: form.contactName.trim(), email: form.email.trim(), ...(google ? {} : { password: form.password }) },
+        ...(google ? { googleCredential: google.credential } : {}),
       });
-      navigate(ROUTES.HOSPITAL_BEDS, { replace: true });
+      navigate(user.emailVerified === false ? ROUTES.VERIFY_EMAIL : ROUTES.HOSPITAL_BEDS, { replace: true });
     } catch (err) {
       const fields = serverFieldErrors(err, (p) => FIELD[p] ?? p);
       setErrors(fields);
@@ -155,6 +163,7 @@ export function RegisterHospitalPage() {
         </p>
       </div>
 
+      <GoogleSignupBlock google={google} onCredential={accept} onClear={clear} />
       <form onSubmit={submit} className="space-y-8" noValidate>
         <Section n="1" title="Hospital">
           <Field id="name" label="Hospital name" error={errors.name}>
@@ -228,8 +237,9 @@ export function RegisterHospitalPage() {
             {input('contactName', { autoComplete: 'name' })}
           </Field>
           <Field id="email" label="Your email (login)" error={errors.email}>
-            {input('email', { type: 'email', autoComplete: 'email' })}
+            {input('email', { type: 'email', autoComplete: 'email', readOnly: !!google, className: cn('input h-11', google && 'bg-surface-muted text-text-muted') })}
           </Field>
+          {!google && (
           <div className="grid sm:grid-cols-2 gap-4">
             <Field id="password" label="Password" error={errors.password} hint="8+ characters with a number">
               {input('password', { type: 'password', autoComplete: 'new-password' })}
@@ -238,6 +248,7 @@ export function RegisterHospitalPage() {
               {input('confirm', { type: 'password', autoComplete: 'new-password' })}
             </Field>
           </div>
+          )}
         </Section>
 
         <label className={cn('flex items-start gap-3 text-small cursor-pointer', errors.declaration ? 'text-danger' : 'text-text')}>

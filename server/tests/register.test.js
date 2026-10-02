@@ -2,13 +2,29 @@ import supertest from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { env } from '../src/config/env.js';
 import { run as hospitalsCli } from '../src/utils/hospitals.js';
+import { setMailTransport } from '../src/services/mail/index.js';
+import { setGoogleVerifier } from '../src/services/auth/google.js';
 import { ICU_VENT_CARDIO, app, loginAs, request, resetDb, startTestDb, stopTestDb } from './helpers/testServer.js';
 
+const outbox = [];
 beforeAll(async () => {
   await startTestDb();
   await resetDb();
+  setMailTransport((msg) => outbox.push(msg));
 });
-afterAll(stopTestDb);
+afterAll(async () => {
+  setMailTransport(null);
+  setGoogleVerifier(null);
+  await stopTestDb();
+});
+
+/** Read the latest code mailed to `email` and confirm it. */
+async function confirmEmail(agent, email) {
+  const mail = [...outbox].reverse().find((m) => m.to === email);
+  const code = mail.subject.match(/\d{6}/)[0];
+  const res = await agent.post('/api/auth/email/verify').send({ code });
+  expect(res.status).toBe(200);
+}
 
 const ambulance = (over = {}) => ({
   name: 'Ravi Kumar',
@@ -86,6 +102,10 @@ describe('ambulance registration', () => {
       ambulance: { vehicleNumber: 'MH01AB1234', ambulanceType: 'ALS' },
     });
 
+    const unconfirmed = await agent.post('/api/emergencies').send(ICU_VENT_CARDIO);
+    expect(unconfirmed.body.code).toBe('EMAIL_NOT_VERIFIED');
+    await confirmEmail(agent, 'ravi@ambulance.test');
+
     const blocked = await agent.post('/api/emergencies').send(ICU_VENT_CARDIO);
     expect(blocked.status).toBe(403);
     expect(blocked.body.code).toBe('ACCOUNT_NOT_VERIFIED');
@@ -145,6 +165,8 @@ describe('hospital registration and verification', () => {
     expect(res.status).toBe(201);
     const { user } = res.body.data;
     expect(user.role).toBe('HOSPITAL');
+    expect(user.emailVerified).toBe(false);
+    await confirmEmail(hospitalAgent, 'meera@seaside.test');
     expect(user.hospital).toMatchObject({
       verificationStatus: 'PENDING',
       status: 'INACTIVE',
@@ -264,5 +286,112 @@ describe('hospital registration and verification', () => {
     } finally {
       env.REGISTRATION_ENABLED = true;
     }
+  });
+});
+
+describe('email verification', () => {
+  it('blocks the panel until the emailed code is entered; wrong codes count down; resend has a cooldown', async () => {
+    const agent = supertest.agent(app);
+    await agent
+      .post('/api/auth/register/ambulance')
+      .send(ambulance({ email: 'code@x.test', vehicleNumber: 'MH04CD1111' }));
+    const mail = outbox.find((m) => m.to === 'code@x.test');
+    expect(mail.subject).toMatch(/^\d{6} is your BedLink verification code$/);
+    expect(mail.text).not.toMatch(/password/i);
+
+    expect((await agent.get('/api/hospitals')).body.code).toBe('EMAIL_NOT_VERIFIED');
+    const wrong = await agent
+      .post('/api/auth/email/verify')
+      .send({ code: '000000' === mail.subject.slice(0, 6) ? '111111' : '000000' });
+    expect(wrong.body.code).toBe('EMAIL_CODE_INVALID');
+    expect((await agent.post('/api/auth/email/send')).body.code).toBe('EMAIL_CODE_COOLDOWN');
+
+    await confirmEmail(agent, 'code@x.test');
+    expect((await agent.get('/api/auth/me')).body.data.user.emailVerified).toBe(true);
+    expect((await agent.get('/api/hospitals')).status).toBe(200);
+  });
+
+  it('EMAIL_VERIFICATION=off skips the code', async () => {
+    env.EMAIL_VERIFICATION = 'off';
+    try {
+      const res = await request()
+        .post('/api/auth/register/ambulance')
+        .send(ambulance({ email: 'off@x.test', vehicleNumber: 'MH04CD2222' }));
+      expect(res.body.data.user.emailVerified).toBe(true);
+    } finally {
+      env.EMAIL_VERIFICATION = 'required';
+    }
+  });
+});
+
+describe('Google sign-in', () => {
+  const token = (email, sub = `g-${email}`) =>
+    JSON.stringify({ sub, email, email_verified: true, name: 'Google User' });
+  beforeAll(() => setGoogleVerifier(async (credential) => JSON.parse(credential)));
+
+  it('exposes the config the login page needs', async () => {
+    const res = await request().get('/api/auth/config');
+    expect(res.body.data).toMatchObject({ emailVerification: 'required', registrationEnabled: true });
+  });
+
+  it('unknown Google email → GOOGLE_ACCOUNT_NOT_FOUND with the email to prefill', async () => {
+    const res = await request()
+      .post('/api/auth/google')
+      .send({ credential: token('new@gmail.test') });
+    expect(res.status).toBe(404);
+    expect(res.body.code).toBe('GOOGLE_ACCOUNT_NOT_FOUND');
+    expect(res.body.details[0]).toEqual({ path: 'email', message: 'new@gmail.test' });
+  });
+
+  it('registers with Google (no password, email already verified) and signs in again with Google', async () => {
+    const agent = supertest.agent(app);
+    const reg = await agent
+      .post('/api/auth/register/ambulance')
+      .send(
+        ambulance({
+          email: 'new@gmail.test',
+          vehicleNumber: 'MH04CD3333',
+          password: undefined,
+          googleCredential: token('new@gmail.test'),
+        })
+      );
+    expect(reg.status).toBe(201);
+    expect(reg.body.data.user.emailVerified).toBe(true);
+
+    const login = await request()
+      .post('/api/auth/google')
+      .send({ credential: token('new@gmail.test') });
+    expect(login.status).toBe(200);
+    expect(login.headers['set-cookie'][0]).toMatch(/^bl_token=/);
+  });
+
+  it('refuses a Google token for a different email than the form', async () => {
+    const res = await request()
+      .post('/api/auth/register/ambulance')
+      .send(
+        ambulance({
+          email: 'typed@x.test',
+          vehicleNumber: 'MH04CD4444',
+          password: undefined,
+          googleCredential: token('other@gmail.test'),
+        })
+      );
+    expect(res.status).toBe(400);
+    expect(res.body.details[0].path).toBe('email');
+  });
+
+  it('links Google to an existing email account and verifies its email', async () => {
+    const res = await request()
+      .post('/api/auth/google')
+      .send({ credential: token('lakeside@bedlink.demo') });
+    expect(res.status).toBe(200);
+    expect(res.body.data.user.role).toBe('HOSPITAL');
+  });
+
+  it('needs a password or Google credential to register', async () => {
+    const res = await request()
+      .post('/api/auth/register/ambulance')
+      .send(ambulance({ email: 'nopw@x.test', vehicleNumber: 'MH04CD5555', password: undefined }));
+    expect(res.status).toBe(400);
   });
 });

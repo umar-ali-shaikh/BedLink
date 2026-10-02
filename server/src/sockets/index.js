@@ -19,6 +19,7 @@ export function createSocketServer(httpServer) {
       const cookies = parseCookieHeader(socket.handshake.headers.cookie);
       const user = await resolveToken(cookies[AUTH_COOKIE_NAME]);
       if (!user) return next(new Error('UNAUTHORIZED'));
+      if (user.emailVerified === false) return next(new Error('EMAIL_NOT_VERIFIED'));
       socket.data.user = user;
       return next();
     } catch (err) {

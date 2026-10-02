@@ -17,9 +17,13 @@ const AuthContext = createContext({
 /** Only ambulance (DISPATCHER) and hospital accounts have a panel in this app. */
 export const UNSUPPORTED_ROLE = 'UNSUPPORTED_ROLE';
 
-/** (Re)connect so the handshake carries the fresh cookie and the server joins our rooms. */
-function connectSocket() {
+/**
+ * (Re)connect so the handshake carries the fresh cookie and the server joins our rooms.
+ * Accounts with an unconfirmed email are refused by the socket server, so wait for that.
+ */
+function connectSocket(user) {
   if (socket.connected) socket.disconnect();
+  if (user?.emailVerified === false) return;
   socket.connect();
 }
 
@@ -36,7 +40,7 @@ export function AuthProvider({ children }) {
         if (cancelled) return;
         if (!PANEL_ROLES.includes(data.user.role)) return authApi.logout().catch(() => {});
         setUser(data.user);
-        connectSocket();
+        connectSocket(data.user);
         return undefined;
       })
       .catch(() => !cancelled && setUser(null))
@@ -61,7 +65,7 @@ export function AuthProvider({ children }) {
       throw { code: UNSUPPORTED_ROLE, message: 'This account has no panel here. Sign in with an ambulance or hospital account.' };
     }
     setUser(data.user);
-    connectSocket();
+    connectSocket(data.user);
     return data.user;
   }, []);
 
@@ -74,10 +78,16 @@ export function AuthProvider({ children }) {
     [startSession]
   );
 
-  /** Re-read /auth/me (e.g. to pick up a hospital's verification result). */
+  /** Google Identity Services credential → sign in (throws GOOGLE_ACCOUNT_NOT_FOUND for new emails). */
+  const loginWithGoogle = useCallback(async (credential) => startSession(await authApi.google(credential)), [startSession]);
+
+  /** Re-read /auth/me (e.g. to pick up a verification result). Connects the socket once the email is confirmed. */
   const refreshUser = useCallback(async () => {
     const data = await authApi.me();
-    setUser(data.user);
+    setUser((prev) => {
+      if (prev?.emailVerified === false && data.user.emailVerified) connectSocket(data.user);
+      return data.user;
+    });
     return data.user;
   }, []);
 
@@ -90,8 +100,8 @@ export function AuthProvider({ children }) {
   }, [clearSession]);
 
   const value = useMemo(
-    () => ({ user, isLoading, login, register, refreshUser, logout }),
-    [user, isLoading, login, register, refreshUser, logout]
+    () => ({ user, isLoading, login, loginWithGoogle, register, refreshUser, logout }),
+    [user, isLoading, login, loginWithGoogle, register, refreshUser, logout]
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

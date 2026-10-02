@@ -2,7 +2,7 @@
   "name": "bedlink-server",
   "version": "0.1.0",
   "private": true,
-  "description": "BedLink API \u2014 Express + Socket.IO + MongoDB",
+  "description": "BedLink API — Express + Socket.IO + MongoDB",
   "type": "module",
   "main": "src/server.js",
   "engines": {
@@ -26,9 +26,11 @@
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
+    "google-auth-library": "^10.9.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.3",
+    "nodemailer": "^7.0.13",
     "socket.io": "^4.8.4",
     "zod": "^4.6.5"
   },

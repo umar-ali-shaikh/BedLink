@@ -56,6 +56,21 @@ const envSchema = z.object({
   /** Checked in ensureAdmin (a weak value is skipped with a warning; it never stops the server). */
   ADMIN_PASSWORD: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
   ADMIN_NAME: z.string().default('BedLink Admin'),
+  /** `required`: self-registered accounts must enter a code sent to their email. `off`: skip. */
+  EMAIL_VERIFICATION: z.enum(['required', 'off']).default('required'),
+  EMAIL_CODE_TTL_MINUTES: positiveInt.default(15),
+  /** Sender, e.g. `BedLink <no-reply@yourdomain.in>` (must be a domain verified with your provider). */
+  MAIL_FROM: z.string().default('BedLink <onboarding@resend.dev>'),
+  /** Resend (HTTPS API — works on hosts that block SMTP, like Render's free tier). */
+  RESEND_API_KEY: z.string().optional(),
+  /** Or any SMTP server (Gmail app password, Brevo, SES…). */
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: positiveInt.default(587),
+  SMTP_SECURE: bool.default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  /** Google Identity Services OAuth client ID (Web). Unset = Google sign-in disabled. */
+  GOOGLE_CLIENT_ID: z.string().optional(),
   /** Registration attempts per IP per hour. */
   REGISTER_RATE_LIMIT_PER_HOUR: positiveInt.default(10),
   /**

@@ -8,13 +8,25 @@ import { HOME_BY_ROLE, ROUTES } from '../../constants/routes';
 import { errorMessage } from '../../services/api';
 
 import { config } from '../../config';
+import { GoogleButton, OrDivider, decodeGoogleCredential, useAuthConfig } from './GoogleButton';
+
+function GoogleSection({ onCredential }) {
+  const { data } = useAuthConfig();
+  if (!data?.googleClientId) return null;
+  return (
+    <>
+      <OrDivider />
+      <GoogleButton onCredential={onCredential} text="signin_with" className="flex justify-center" />
+    </>
+  );
+}
 
 /** Quick-fill buttons for seeded demo accounts (VITE_DEMO_ACCOUNTS / VITE_SHOW_DEMO_ACCOUNTS). */
 const DEMO_ACCOUNTS = config.demoAccounts;
 const SHOW_DEMO = config.showDemoAccounts && DEMO_ACCOUNTS.length > 0;
 
 export function LoginForm() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -32,14 +44,32 @@ export function LoginForm() {
     setError('');
     setIsLoading(true);
     try {
-      const user = await login({ email: email.trim(), password });
-      const home = HOME_BY_ROLE[user.role];
-      const from = location.state?.from?.pathname;
-      const prefix = home.split('/')[1];
-      navigate(from && from.startsWith(`/${prefix}/`) ? from : home, { replace: true });
+      goHome(await login({ email: email.trim(), password }));
     } catch (err) {
       setError(err.code === 'INVALID_CREDENTIALS' ? 'Invalid email or password.' : errorMessage(err));
       setIsLoading(false);
+    }
+  };
+
+  const goHome = (user) => {
+    if (user.emailVerified === false) return navigate(ROUTES.VERIFY_EMAIL, { replace: true });
+    const home = HOME_BY_ROLE[user.role];
+    const from = location.state?.from?.pathname;
+    const prefix = home.split('/')[1];
+    return navigate(from && from.startsWith(`/${prefix}/`) ? from : home, { replace: true });
+  };
+
+  /** Google: existing account → signed in; new email → registration, prefilled with it. */
+  const onGoogle = async (credential) => {
+    setError('');
+    try {
+      goHome(await loginWithGoogle(credential));
+    } catch (err) {
+      if (err.code === 'GOOGLE_ACCOUNT_NOT_FOUND') {
+        navigate(ROUTES.REGISTER, { state: { google: { credential, ...decodeGoogleCredential(credential) } } });
+        return;
+      }
+      setError(errorMessage(err));
     }
   };
 
@@ -111,6 +141,8 @@ export function LoginForm() {
             </span>
           </Button>
         </form>
+
+        <GoogleSection onCredential={onGoogle} />
 
         <div className="mt-5 grid grid-cols-2 gap-2">
           <Link to={ROUTES.REGISTER_AMBULANCE} className="h-10 px-2 rounded-md border border-border text-[13px] font-semibold text-text flex items-center justify-center hover:border-primary hover:text-primary">

@@ -23,11 +23,16 @@ export function createApp() {
 
   app.use(
     helmet({
+      // Google sign-in opens a popup that must be able to message this window back.
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
       contentSecurityPolicy: {
         directives: {
           // Map tiles (VITE_MAP_TILE_URL) and Google Fonts load from other HTTPS hosts.
           'img-src': ["'self'", 'data:', 'blob:', 'https:'],
           'connect-src': ["'self'", 'https:', 'wss:'],
+          // Google Identity Services button (sign in with Google).
+          'script-src': ["'self'", 'https://accounts.google.com'],
+          'frame-src': ["'self'", 'https://accounts.google.com'],
           // Only force https in production, so plain-http local runs keep working.
           'upgrade-insecure-requests': env.isProduction ? [] : null,
         },
