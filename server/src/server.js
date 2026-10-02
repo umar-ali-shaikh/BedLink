@@ -4,6 +4,7 @@ import { env } from './config/env.js';
 import { connectDB, disconnectDB, ensureIndexes } from './config/db.js';
 import { Hospital, User } from './models/index.js';
 import { seedDatabase } from './utils/seed.js';
+import { ensureAdmin } from './services/auth/bootstrapAdmin.js';
 import { createApp } from './app.js';
 import { createSocketServer } from './sockets/index.js';
 import { clearAllOfferTimeouts, restorePendingTimers } from './services/emergency/index.js';
@@ -33,6 +34,7 @@ async function start() {
   await connectDB();
   await ensureIndexes();
   await seedIfEmpty();
+  await ensureAdmin();
 
   const app = createApp();
   const server = http.createServer(app);

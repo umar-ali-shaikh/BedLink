@@ -13,6 +13,7 @@ export const ROUTES = Object.freeze({
   HOSPITAL_BEDS: '/hospital/beds',
   HOSPITAL_REQUESTS: '/hospital/requests',
   HOSPITAL_PROFILE: '/hospital/profile',
+  ADMIN_VERIFICATIONS: '/admin/verifications',
 });
 
 export const emergencyPath = (id) => ROUTES.DISPATCHER_EMERGENCY_DETAIL.replace(':id', id);
@@ -20,7 +21,8 @@ export const emergencyPath = (id) => ROUTES.DISPATCHER_EMERGENCY_DETAIL.replace(
 export const HOME_BY_ROLE = Object.freeze({
   [ROLES.DISPATCHER]: ROUTES.DISPATCHER_DASHBOARD,
   [ROLES.HOSPITAL]: ROUTES.HOSPITAL_DASHBOARD,
+  [ROLES.ADMIN]: ROUTES.ADMIN_VERIFICATIONS,
 });
 
-/** Roles that have a panel in this app (ADMIN is API/CLI-only). */
-export const PANEL_ROLES = [ROLES.DISPATCHER, ROLES.HOSPITAL];
+/** Ambulance, Hospital and the admin verification panel. */
+export const PANEL_ROLES = [ROLES.DISPATCHER, ROLES.HOSPITAL, ROLES.ADMIN];

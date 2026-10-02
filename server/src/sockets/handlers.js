@@ -71,9 +71,10 @@ export function registerHandlers(socket) {
   // Optional thin wrappers over the same services + validation as REST (ARCHITECTURE.md §9.2).
   socket.on(
     CLIENT_EVENTS.EMERGENCY_CREATE,
-    guarded(socket, [ROLES.DISPATCHER], async (payload) =>
-      (await createEmergency(parse(emergencyBody, payload), user)).toJSON()
-    )
+    guarded(socket, [ROLES.DISPATCHER], async (payload) => {
+      if (user.verificationStatus !== 'VERIFIED') throw new AppError('ACCOUNT_NOT_VERIFIED');
+      return (await createEmergency(parse(emergencyBody, payload), user)).toJSON();
+    })
   );
 
   socket.on(

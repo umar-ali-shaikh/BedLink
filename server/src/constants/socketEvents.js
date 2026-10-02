@@ -13,6 +13,8 @@ export const SERVER_EVENTS = Object.freeze({
   RESERVATION_CREATED: 'reservation:created',
   RESERVATION_EXPIRED: 'reservation:expired',
   RESERVATION_RELEASED: 'reservation:released',
+  /** A registration was created or decided: admins refresh the queue; the account refreshes /auth/me. */
+  VERIFICATION_UPDATED: 'verification:updated',
 });
 
 /** Client → server */

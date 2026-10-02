@@ -20,7 +20,7 @@ const initials = (name = '') =>
  * OPERATIONS nav group and the user card at the bottom, a breadcrumb top bar with the live
  * indicator. Below 1024 px the sidebar becomes a drawer.
  */
-export function AppShell({ nav, hub = 'Dispatch hub', section, roleLabel, primaryAction }) {
+export function AppShell({ nav, hub = 'Dispatch hub', section, roleLabel, primaryAction, banner }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -110,6 +110,7 @@ export function AppShell({ nav, hub = 'Dispatch hub', section, roleLabel, primar
           </header>
         </div>
         <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 py-5 lg:px-6 lg:py-6">
+          {banner}
           <Outlet />
         </main>
       </div>

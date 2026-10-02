@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { AMBULANCE_TYPE_VALUES } from '../constants/ambulance.js';
+import { VERIFICATION_STATUS, VERIFICATION_STATUS_VALUES } from '../constants/hospital.js';
 import { ROLES, ROLE_VALUES } from '../constants/roles.js';
 import { jsonOptions } from './plugins/toJSON.js';
 
@@ -23,6 +24,11 @@ const userSchema = new mongoose.Schema(
     },
     isActive: { type: Boolean, default: true },
     phone: { type: String, trim: true, default: '' },
+    /** Self-registered ambulances start PENDING; seeded/admin-created accounts are VERIFIED. */
+    verificationStatus: { type: String, enum: VERIFICATION_STATUS_VALUES, default: VERIFICATION_STATUS.VERIFIED },
+    verificationNote: { type: String, trim: true, default: '' },
+    verifiedAt: { type: Date, default: null },
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     /** Ambulance crew (role DISPATCHER) registration details. */
     ambulance: {
       type: new mongoose.Schema(
@@ -47,5 +53,7 @@ userSchema.index(
     name: 'unique_ambulance_vehicle',
   }
 );
+
+userSchema.index({ role: 1, verificationStatus: 1 });
 
 export const User = mongoose.model('User', userSchema);

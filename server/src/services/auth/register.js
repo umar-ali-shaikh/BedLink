@@ -9,6 +9,7 @@ import { logger } from '../../utils/logger.js';
 import { describeUser, toAuthUser } from './index.js';
 import { hashPassword } from './password.js';
 import { signToken } from './token.js';
+import { emitVerificationUpdate } from '../verification/index.js';
 
 const duplicate = (path, message) => new AppError('DUPLICATE_RESOURCE', message, undefined, [{ path, message }]);
 
@@ -34,7 +35,8 @@ function mapDuplicateKey(err) {
 }
 
 /**
- * Ambulance crew self-registration → active DISPATCHER account, signed in.
+ * Ambulance crew self-registration → DISPATCHER account, signed in. It starts PENDING (can
+ * sign in, can't request beds) until an admin verifies it, unless AMBULANCE_AUTO_VERIFY=true.
  * Vehicle numbers are unique so one ambulance can't register twice.
  */
 export async function registerAmbulance({ name, email, password, phone, vehicleNumber, ambulanceType, organization }) {
@@ -51,8 +53,12 @@ export async function registerAmbulance({ name, email, password, phone, vehicleN
       role: ROLES.DISPATCHER,
       passwordHash: await hashPassword(password),
       ambulance: { vehicleNumber, ambulanceType, organization: organization ?? '' },
+      verificationStatus: env.AMBULANCE_AUTO_VERIFY ? VERIFICATION_STATUS.VERIFIED : VERIFICATION_STATUS.PENDING,
+      verifiedAt: env.AMBULANCE_AUTO_VERIFY ? new Date() : null,
+      verificationNote: env.AMBULANCE_AUTO_VERIFY ? 'Automatically verified (AMBULANCE_AUTO_VERIFY)' : '',
     });
     logger.info('register.ambulance', { userId: user._id.toString() });
+    emitVerificationUpdate({ kind: 'ambulance', id: user._id.toString(), status: user.verificationStatus });
     return session(user);
   } catch (err) {
     throw mapDuplicateKey(err);
@@ -105,6 +111,7 @@ export async function registerHospital({ hospital, contact }) {
       passwordHash: await hashPassword(contact.password),
     });
     logger.info('register.hospital', { hospitalId: created._id.toString(), verified });
+    emitVerificationUpdate({ kind: 'hospital', id: created._id.toString(), status: created.verificationStatus });
     return session(user);
   } catch (err) {
     // No orphan hospital if the account could not be created.

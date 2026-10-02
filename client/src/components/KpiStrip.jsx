@@ -8,11 +8,18 @@ const TONES = { success: 'text-success', danger: 'text-danger', warning: 'text-w
 export function KpiStrip({ items, isLoading, className }) {
   return (
     <div className={cn('bg-surface border border-border rounded-lg shadow-card overflow-hidden', className)}>
-      <dl className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 divide-border [&>div]:border-border">
+      <dl className={cn('grid grid-cols-2 sm:grid-cols-4 divide-border [&>div]:border-border', items.length > 4 && 'xl:grid-cols-8')}>
         {items.map((item, i) => (
           <div
             key={item.label}
-            className={cn('px-4 py-4 border-b xl:border-b-0', i % 2 === 0 && 'border-r', 'sm:border-r', (i + 1) % 4 === 0 && 'sm:border-r-0 xl:border-r', i === items.length - 1 && 'xl:border-r-0')}
+            className={cn(
+              'px-4 py-4 border-b sm:border-r',
+              i % 2 === 0 && 'border-r',
+              (i + 1) % 4 === 0 && 'sm:border-r-0',
+              items.length > 4 ? 'xl:border-b-0' : i >= items.length - 4 && 'sm:border-b-0',
+              items.length > 4 && (i + 1) % 4 === 0 && 'xl:border-r',
+              i === items.length - 1 && 'xl:border-r-0'
+            )}
           >
             <dt className="text-[11px] font-semibold uppercase tracking-wider text-text-subtle min-h-[16px]">{item.label}</dt>
             <dd className={cn('mt-2 text-[26px] leading-8 font-bold tabular-nums', TONES[item.tone] ?? 'text-text')}>

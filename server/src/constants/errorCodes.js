@@ -4,6 +4,7 @@ export const ERROR_CODES = Object.freeze({
   UNAUTHORIZED: { status: 401, message: 'Authentication required' },
   INVALID_CREDENTIALS: { status: 401, message: 'Invalid email or password' },
   FORBIDDEN: { status: 403, message: 'You do not have access to this resource' },
+  ACCOUNT_NOT_VERIFIED: { status: 403, message: 'Your account is waiting for verification by the BedLink team' },
   RESOURCE_NOT_FOUND: { status: 404, message: 'Resource not found' },
   INVALID_STATE_TRANSITION: { status: 409, message: 'This action is not allowed in the current state' },
   DUPLICATE_RESOURCE: { status: 409, message: 'A resource with these details already exists' },

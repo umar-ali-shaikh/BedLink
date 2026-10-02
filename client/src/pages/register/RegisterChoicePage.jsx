@@ -10,7 +10,7 @@ const OPTIONS = [
     icon: Ambulance,
     title: 'Ambulance',
     text: 'Crew or driver. Find the right hospital bed and request it in seconds.',
-    note: 'Ready to use right away',
+    note: 'Verified by our team before requesting beds',
   },
   {
     to: ROUTES.REGISTER_HOSPITAL,

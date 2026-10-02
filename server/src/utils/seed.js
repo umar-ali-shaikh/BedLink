@@ -77,11 +77,23 @@ export async function seedDatabase({ now = new Date() } = {}) {
   };
 }
 
+/** localhost / 127.0.0.1 / docker-style `mongo` host — anything else (Atlas…) is treated as shared. */
+export function isLocalDatabase(uri = '') {
+  const hosts = uri
+    .replace(/^mongodb(\+srv)?:\/\//, '')
+    .split('/')[0]
+    .split('@')
+    .pop();
+  return hosts.split(',').every((h) => /^(localhost|127\.0\.0\.1|\[::1\]|mongo|mongodb)(:\d+)?$/i.test(h));
+}
+
 /** `npm run seed` */
 async function main() {
-  if (env.isProduction && !env.SEED_ALLOW_PRODUCTION) {
-    console.error('\n[BedLink] Refusing to seed: NODE_ENV=production and seeding wipes every collection.');
-    console.error('Set SEED_ALLOW_PRODUCTION=true for this one command if you really mean it.\n');
+  if ((env.isProduction || !isLocalDatabase(env.MONGO_URI)) && !env.SEED_ALLOW_PRODUCTION) {
+    console.error('\n[BedLink] Refusing to seed: it WIPES every collection, and MONGO_URI is not a local database');
+    console.error(
+      '(or NODE_ENV=production). Set SEED_ALLOW_PRODUCTION=true for this one command if you really mean it.\n'
+    );
     process.exit(1);
   }
   const started = Date.now();

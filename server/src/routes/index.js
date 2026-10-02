@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import adminRoutes from './adminRoutes.js';
 import analyticsRoutes from './analyticsRoutes.js';
 import authRoutes from './authRoutes.js';
 import bedRoutes from './bedRoutes.js';
@@ -22,6 +23,7 @@ router.use('/emergencies', emergencyRoutes);
 router.use('/hospital-requests', hospitalRequestRoutes);
 router.use('/reservations', reservationRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);
 router.use('/notifications', notificationRoutes);
 

@@ -63,7 +63,7 @@ export function RegisterAmbulancePage() {
   );
 
   return (
-    <RegisterShell title="Register ambulance" subtitle="For ambulance crews and drivers. You can request beds right after signing up." back={ROUTES.REGISTER}>
+    <RegisterShell title="Register ambulance" subtitle="For ambulance crews and drivers. Our team verifies your vehicle, then you can request beds." back={ROUTES.REGISTER}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Field id="name" label="Full name" error={errors.name}>
           {input('name', { autoComplete: 'name' })}

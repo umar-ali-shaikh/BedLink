@@ -75,32 +75,45 @@ In dev the browser only talks to Vite, which proxies `/api` and `/socket.io` to
 the hospital UI can be opened from a phone on the same network. All client settings are
 `VITE_*` variables in `client/.env.example`. Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-Two panels, each with public self-registration (`/register`):
+Two panels with public self-registration (`/register`), plus an admin verification desk:
 
 | Panel | Screens |
 |---|---|
 | Ambulance (API role `DISPATCHER`) | `/register/ambulance`, `/ambulance/dashboard`, `/ambulance/emergency/new` (requirements · ranked hospitals · map), `/ambulance/emergency/:id` (countdown, reservation, timeline) |
+| Admin | `/admin/verifications` — approve/reject hospitals and ambulances |
 | Hospital (mobile-first) | `/register/hospital`, `/hospital/dashboard` (incoming request with Accept/Reject, counters, Confirm all, load), `/hospital/beds` (add beds, one-tap status), `/hospital/requests`, `/hospital/profile` |
 
-There is no admin panel. The login page has one-click demo account buttons (hide them with
+The admin panel is only for verification (below). The login page has one-click demo account buttons (hide them with
 `VITE_SHOW_DEMO_ACCOUNTS=false`).
 
-### Hospital verification
+### Verification (admin panel)
 
-Self-registered hospitals are checked automatically (registration-number and ABDM HFR ID
-format, unique registration number / HFR ID / emails, no same-named hospital within 1 km) and
-then start **PENDING**: they can sign in and add beds, but ambulances can't see them until verified:
+Self-registered **hospitals and ambulances start PENDING**. Hospitals can sign in and add beds but
+are invisible to ambulances; ambulances can sign in but can't request beds. Automatic checks run
+at sign-up (formats, unique registration number / HFR ID / vehicle number / emails, no
+same-named hospital within 1 km).
+
+Admins approve or reject them at **`/admin/verifications`** (log in on the normal login page):
+hospital and ambulance tabs, all details with links (map, ABDM facility search, Parivahan,
+`tel:`), a checklist, Approve / Reject (a reason is required and shown to the applicant).
+Everything updates live: new sign-ups appear instantly, and the applicant's screen unlocks
+the moment it's approved.
+
+Admin login comes from env: `ADMIN_EMAIL` + `ADMIN_PASSWORD` create that admin at startup (or
+reset its password). Setting `ADMIN_EMAIL=admin@bedlink.demo` with a new password rotates the
+public demo admin. The same actions exist on the command line:
 
 ```bash
 cd server
-npm run hospitals                                   # list pending registrations (with map link, phone)
-npm run hospitals -- verify MH/CE/2024/00123 "Checked state register, called reception"
-npm run hospitals -- reject <id> "Registration number not found in state register"
+npm run hospitals                                    # pending hospitals
+npm run hospitals -- verify <id|registrationNo> "note"
+npm run hospitals -- reject <id|registrationNo> "reason"
+npm run hospitals -- ambulances                      # pending ambulances
+npm run hospitals -- verify-ambulance <id|vehicleNo|email> "note"
+npm run hospitals -- reject-ambulance <id|vehicleNo|email> "reason"
 ```
 
-Check the registration number against the state Clinical Establishment register, the HFR ID at
-facility.abdm.gov.in, and call the official phone before verifying. `HOSPITAL_AUTO_VERIFY=true`
-skips this (demos only). Ambulances are active immediately; vehicle numbers are unique.
+`HOSPITAL_AUTO_VERIFY=true` / `AMBULANCE_AUTO_VERIFY=true` skip verification (demos only).
 
 ### Deploy
 

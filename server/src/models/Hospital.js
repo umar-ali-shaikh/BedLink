@@ -47,6 +47,7 @@ const hospitalSchema = new mongoose.Schema(
     },
     verificationNote: { type: String, trim: true, default: '' },
     verifiedAt: { type: Date, default: null },
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true, toJSON: jsonOptions({ location: 'coordinates' }) }
 );

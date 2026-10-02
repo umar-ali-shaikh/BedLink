@@ -11,6 +11,7 @@ export const SOCKET_EVENTS = Object.freeze({
   RESERVATION_CREATED: 'reservation:created',
   RESERVATION_EXPIRED: 'reservation:expired',
   RESERVATION_RELEASED: 'reservation:released',
+  VERIFICATION_UPDATED: 'verification:updated',
 });
 
 export const CLIENT_EVENTS = Object.freeze({

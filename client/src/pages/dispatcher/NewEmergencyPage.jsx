@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CircleAlert, Pencil, RefreshCw, Search } from 'lucide-react';
+import { CircleAlert, Lock, Pencil, RefreshCw, Search } from 'lucide-react';
+import { useAuth } from '../../features/auth/useAuth';
+import { isVerifiedAmbulance } from '../../features/verification/AmbulanceVerificationBanner';
 import { EmergencyForm, DEFAULT_REQUIREMENTS } from '../../features/dispatcher/EmergencyForm';
 import { HospitalCard } from '../../features/dispatcher/HospitalCard';
 import { ExcludedList } from '../../features/dispatcher/ExcludedList';
@@ -31,6 +33,21 @@ const validLoc = (l) => Number.isFinite(+l.lat) && Number.isFinite(+l.lng) && l.
  * above the list.
  */
 export function NewEmergencyPage() {
+  const { user } = useAuth();
+  if (!isVerifiedAmbulance(user)) {
+    return (
+      <EmptyState
+        icon={Lock}
+        title="Requesting beds unlocks after verification"
+        description="An admin is checking your ambulance details. You'll be notified here as soon as you're verified."
+        className="py-16"
+      />
+    );
+  }
+  return <NewEmergencyForm />;
+}
+
+function NewEmergencyForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showToast } = useToast();

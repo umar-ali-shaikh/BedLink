@@ -472,6 +472,16 @@ a conditional update `{ _id, status: 'PENDING' }`. Whoever writes first wins.
 | `GET /api/notifications?unread=true` | any authenticated | Own (or own hospital's) notifications |
 | `PATCH /api/notifications/:id/read` | any authenticated (owner) | |
 
+**Admin verification** (ADMIN)
+
+| Method & path | Notes |
+|---|---|
+| `GET /api/admin/verifications/summary` | Counts by status for hospitals and ambulances |
+| `GET /api/admin/verifications/hospitals?status=PENDING\|VERIFIED\|REJECTED\|ALL` | With staff logins |
+| `GET /api/admin/verifications/ambulances?status=` | DISPATCHER accounts |
+| `POST /api/admin/verifications/hospitals/:id` | `{ decision: VERIFY\|REJECT, note? }` (note required to reject) → emits `verification:updated` to admins and the hospital room |
+| `POST /api/admin/verifications/ambulances/:id` | Same; unverified ambulances get `403 ACCOUNT_NOT_VERIFIED` on create emergency / request-hospital |
+
 **Health:** `GET /api/health` → `{ success: true, data: { status: 'ok' } }` (public, for Render).
 
 ---

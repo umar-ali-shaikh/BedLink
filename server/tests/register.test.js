@@ -36,19 +36,60 @@ const hospitalBody = (over = {}, contact = {}) => ({
   contact: { name: 'Dr Meera Shah', email: 'meera@seaside.test', password: 'Hospital9', ...contact },
 });
 
+describe('admin bootstrap', () => {
+  it('ADMIN_EMAIL + ADMIN_PASSWORD create the admin, and reset the password when it exists', async () => {
+    const { ensureAdmin } = await import('../src/services/auth/bootstrapAdmin.js');
+    Object.assign(env, { ADMIN_EMAIL: 'ops@bedlink.test', ADMIN_PASSWORD: 'Very-Secret-123' });
+    try {
+      await ensureAdmin();
+      const first = await request()
+        .post('/api/auth/login')
+        .send({ email: 'ops@bedlink.test', password: 'Very-Secret-123' });
+      expect(first.body.data.user.role).toBe('ADMIN');
+      env.ADMIN_PASSWORD = 'Rotated-Secret-456';
+      await ensureAdmin();
+      const old = await request()
+        .post('/api/auth/login')
+        .send({ email: 'ops@bedlink.test', password: 'Very-Secret-123' });
+      expect(old.status).toBe(401);
+      const rotated = await request()
+        .post('/api/auth/login')
+        .send({ email: 'ops@bedlink.test', password: 'Rotated-Secret-456' });
+      expect(rotated.status).toBe(200);
+    } finally {
+      Object.assign(env, { ADMIN_EMAIL: undefined, ADMIN_PASSWORD: undefined });
+    }
+  });
+});
+
 describe('ambulance registration', () => {
-  it('creates an active DISPATCHER account, signs it in and normalises the vehicle number', async () => {
+  it('creates a PENDING DISPATCHER account that is signed in but cannot request beds yet', async () => {
     const agent = supertest.agent(app);
     const res = await agent.post('/api/auth/register/ambulance').send(ambulance());
     expect(res.status).toBe(201);
     expect(res.headers['set-cookie'][0]).toMatch(/^bl_token=/);
     expect(res.body.data.user).toMatchObject({
       role: 'DISPATCHER',
+      verificationStatus: 'PENDING',
       ambulance: { vehicleNumber: 'MH01AB1234', ambulanceType: 'ALS' },
     });
 
+    const blocked = await agent.post('/api/emergencies').send(ICU_VENT_CARDIO);
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.code).toBe('ACCOUNT_NOT_VERIFIED');
+
+    const admin = await loginAs('admin@bedlink.demo');
+    const queue = await admin.get('/api/admin/verifications/ambulances');
+    const mine = queue.body.data.find((u) => u.email === 'ravi@ambulance.test');
+    expect(mine).toMatchObject({ verificationStatus: 'PENDING' });
+    expect(mine.passwordHash).toBeUndefined();
+
+    const decided = await admin
+      .post(`/api/admin/verifications/ambulances/${mine.id}`)
+      .send({ decision: 'VERIFY', note: 'RC checked' });
+    expect(decided.status).toBe(200);
     const me = await agent.get('/api/auth/me');
-    expect(me.body.data.user.ambulance.vehicleNumber).toBe('MH01AB1234');
+    expect(me.body.data.user.verificationStatus).toBe('VERIFIED');
     const created = await agent.post('/api/emergencies').send(ICU_VENT_CARDIO);
     expect(created.status).toBe(201);
   });
@@ -147,6 +188,22 @@ describe('hospital registration and verification', () => {
         )
       );
     expect(badHfr.status).toBe(400);
+  });
+
+  it('admin panel API: summary, queue, reject needs a reason, non-admins are refused', async () => {
+    const admin = await loginAs('admin@bedlink.demo');
+    const summary = await admin.get('/api/admin/verifications/summary');
+    expect(summary.body.data.hospitals.PENDING).toBeGreaterThanOrEqual(1);
+    const queue = await admin.get('/api/admin/verifications/hospitals?status=PENDING');
+    const pending = queue.body.data.find((h) => h.id === hospitalId);
+    expect(pending.staff[0].email).toBe('meera@seaside.test');
+
+    const noReason = await admin.post(`/api/admin/verifications/hospitals/${hospitalId}`).send({ decision: 'REJECT' });
+    expect(noReason.status).toBe(400);
+
+    const dispatcher = await loginAs('dispatcher1@bedlink.demo');
+    expect((await dispatcher.get('/api/admin/verifications/hospitals')).status).toBe(403);
+    expect((await hospitalAgent.get('/api/admin/verifications/summary')).status).toBe(403);
   });
 
   it('becomes visible to ambulances after `npm run hospitals -- verify`', async () => {

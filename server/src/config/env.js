@@ -46,6 +46,18 @@ const envSchema = z.object({
   REGISTRATION_ENABLED: bool.default(true),
   /** Skip manual verification of self-registered hospitals (demos only). */
   HOSPITAL_AUTO_VERIFY: bool.default(false),
+  /** Skip manual verification of self-registered ambulances (demos only). */
+  AMBULANCE_AUTO_VERIFY: bool.default(false),
+  /**
+   * Bootstrap admin for the verification panel. When both are set, the account is created at
+   * startup (or its password reset to this value) — use it to rotate the demo admin password.
+   */
+  ADMIN_EMAIL: z.preprocess((v) => (v === '' ? undefined : v), z.email().optional()),
+  ADMIN_PASSWORD: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().min(10, 'ADMIN_PASSWORD must be at least 10 characters').optional()
+  ),
+  ADMIN_NAME: z.string().default('BedLink Admin'),
   /** Registration attempts per IP per hour. */
   REGISTER_RATE_LIMIT_PER_HOUR: positiveInt.default(10),
   /**

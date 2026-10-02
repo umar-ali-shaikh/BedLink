@@ -9,6 +9,7 @@ import { HOME_BY_ROLE, ROUTES } from '../constants/routes';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { DispatcherLayout } from '../layouts/DispatcherLayout';
 import { HospitalLayout } from '../layouts/HospitalLayout';
+import { AdminLayout } from '../layouts/AdminLayout';
 import { LoginPage } from '../pages/LoginPage';
 
 const DispatcherDashboardPage = lazy(() => import('../pages/dispatcher/DispatcherDashboardPage').then((m) => ({ default: m.DispatcherDashboardPage })));
@@ -22,6 +23,8 @@ const RegisterChoicePage = lazy(() => import('../pages/register/RegisterChoicePa
 const RegisterAmbulancePage = lazy(() => import('../pages/register/RegisterAmbulancePage').then((m) => ({ default: m.RegisterAmbulancePage })));
 const RegisterHospitalPage = lazy(() => import('../pages/register/RegisterHospitalPage').then((m) => ({ default: m.RegisterHospitalPage })));
 const HospitalProfilePage = lazy(() => import('../pages/hospital/HospitalProfilePage').then((m) => ({ default: m.HospitalProfilePage })));
+
+const AdminVerificationsPage = lazy(() => import('../pages/admin/AdminVerificationsPage').then((m) => ({ default: m.AdminVerificationsPage })));
 
 function HomeRedirect() {
   const { user, isLoading } = useAuth();
@@ -57,6 +60,10 @@ export default function App() {
             <Route path={ROUTES.HOSPITAL_PROFILE} element={<HospitalProfilePage />} />
           </Route>
 
+
+          <Route element={guard([ROLES.ADMIN], <AdminLayout />)}>
+            <Route path={ROUTES.ADMIN_VERIFICATIONS} element={<AdminVerificationsPage />} />
+          </Route>
 
           <Route path="*" element={<HomeRedirect />} />
         </Routes>

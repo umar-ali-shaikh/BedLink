@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { CircleX, Hourglass } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { ROUTES } from '../../constants/routes';
+import { useAccountVerification } from '../verification/useAccountVerification';
 
 const POLL_MS = 30_000;
 
@@ -13,6 +14,7 @@ const POLL_MS = 30_000;
 export function VerificationBanner() {
   const { user, refreshUser } = useAuth();
   const status = user?.hospital?.verificationStatus;
+  useAccountVerification();
 
   useEffect(() => {
     if (status !== 'PENDING') return undefined;

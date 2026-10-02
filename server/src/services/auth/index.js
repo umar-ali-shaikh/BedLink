@@ -14,6 +14,7 @@ export function toAuthUser(doc) {
     email: doc.email,
     role: doc.role,
     hospitalId: doc.hospitalId ? doc.hospitalId.toString() : null,
+    verificationStatus: doc.verificationStatus ?? 'VERIFIED',
   };
 }
 
@@ -67,6 +68,7 @@ export async function describeUser(authUser) {
         vehicleNumber: a.vehicleNumber,
         ambulanceType: a.ambulanceType,
         organization: a.organization,
+        verificationNote: user.verificationNote ?? '',
       };
     }
   }

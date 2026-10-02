@@ -4,6 +4,7 @@ import { LayoutGrid, Plus, Siren } from 'lucide-react';
 import { AppShell } from './AppShell';
 import { useAuth } from '../features/auth/useAuth';
 import { ROUTES } from '../constants/routes';
+import { AmbulanceVerificationBanner } from '../features/verification/AmbulanceVerificationBanner';
 
 const NAV = [
   { to: ROUTES.DISPATCHER_DASHBOARD, label: 'Overview', icon: LayoutGrid },
@@ -20,6 +21,7 @@ export function DispatcherLayout() {
       hub="Ambulance"
       section="Ambulance"
       roleLabel={vehicle ? `${vehicle.vehicleNumber} · ${vehicle.ambulanceType}` : 'Ambulance crew'}
+      banner={<AmbulanceVerificationBanner />}
       primaryAction={
         <Link
           to={ROUTES.DISPATCHER_NEW_EMERGENCY}
