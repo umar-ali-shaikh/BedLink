@@ -94,21 +94,30 @@ export function loadEnv(source) {
   }
   const parsed = result.data;
   const isProduction = parsed.NODE_ENV === 'production';
-  const cookieSameSite = parsed.COOKIE_SAMESITE ?? (isProduction ? 'none' : 'lax');
-  const cookieSecure = parsed.COOKIE_SECURE ?? isProduction;
+  const clientOrigins = parsed.CLIENT_ORIGIN.split(',').map(toOrigin).filter(Boolean);
+  // A deployed https client (e.g. Vercel) talking to this API on another site needs
+  // SameSite=None; Secure cookies — decide from CLIENT_ORIGIN so a missing NODE_ENV can't break login.
+  const deployedClient = clientOrigins.some(
+    (o) => o.startsWith('https://') && !/\/\/(localhost|127\.0\.0\.1)(:|$)/.test(o)
+  );
+  const crossSiteDefault = isProduction || deployedClient;
+  const cookieSameSite = parsed.COOKIE_SAMESITE ?? (crossSiteDefault ? 'none' : 'lax');
+  const cookieSecure = parsed.COOKIE_SECURE ?? crossSiteDefault;
+  // Render/Heroku-style hosts set these; they always sit behind one proxy hop.
+  const behindProxy = isProduction || Boolean(source.RENDER || source.DYNO || source.RAILWAY_ENVIRONMENT);
   if (cookieSameSite === 'none' && !cookieSecure) {
     throw new Error('Invalid environment configuration:\n  - COOKIE_SECURE: must be true when COOKIE_SAMESITE=none');
   }
   return {
     ...parsed,
-    TRUST_PROXY: parsed.TRUST_PROXY ?? (isProduction ? 1 : 0),
+    TRUST_PROXY: parsed.TRUST_PROXY ?? (behindProxy ? 1 : 0),
     COOKIE_SAMESITE: cookieSameSite,
     COOKIE_SECURE: cookieSecure,
     DNS_SERVER_LIST: (parsed.DNS_SERVERS ?? '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
-    CLIENT_ORIGINS: parsed.CLIENT_ORIGIN.split(',').map(toOrigin).filter(Boolean),
+    CLIENT_ORIGINS: clientOrigins,
     isProduction,
     isTest: parsed.NODE_ENV === 'test',
   };
