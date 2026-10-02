@@ -1,150 +1,137 @@
-import React, { useState } from 'react';
-import { IncomingRequestCard } from '../../features/hospital/IncomingRequestCard';
+import React from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { BellRing, Inbox } from 'lucide-react';
+import { useActiveReservations, useMyHospital, usePendingRequests } from '../../features/hospital/hooks';
+import { IncomingRequestSlot } from '../../features/hospital/IncomingRequestSlot';
+import { LoadControl } from '../../features/hospital/LoadControl';
 import { BedCounters } from '../../features/beds/BedCounters';
 import { ConfirmAllButton } from '../../features/beds/ConfirmAllButton';
-import { LoadControl } from '../../features/hospital/LoadControl';
+import { ReservationActions, ReservationCard } from '../../features/reservations/ReservationCard';
+import { reservationsApi } from '../../features/reservations/api';
+import { Card } from '../../components/Card';
 import { FreshnessIndicator } from '../../components/FreshnessIndicator';
-import { ReservationCard } from '../../features/reservations/ReservationCard';
-import { Button } from '../../components/Button';
+import { ErrorState } from '../../components/ErrorState';
+import { Skeleton } from '../../components/Skeleton';
 import { useToast } from '../../components/Toast';
+import { qk } from '../../services/queryKeys';
+import { errorMessage } from '../../services/api';
 
-export function HospitalDashboardPage() {
+export function useReservationMutations() {
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
-
-  // Simulated live incoming request (can be toggled for testing)
-  const [incomingRequest, setIncomingRequest] = useState({
-    _id: 'req-live-01',
-    expiresAt: new Date(Date.now() + 102000).toISOString(),
-    distanceKm: 3.9,
-    estimatedEtaMinutes: 8,
-    emergency: {
-      demoPatientId: 'DEMO-P-0042',
-      requirements: {
-        bedType: 'ICU',
-        equipment: ['VENTILATOR', 'CARDIAC_MONITOR'],
-        specialties: ['CARDIOLOGY'],
-        urgency: 'CRITICAL',
-      },
-    },
-  });
-
-  const [activeReservation, setActiveReservation] = useState(null);
-  const [lastUpdate, setLastUpdate] = useState(new Date().toISOString());
-
-  const handleAcceptRequest = () => {
-    setActiveReservation({
-      _id: 'res-live-101',
-      bedNumber: 'ICU-02',
-      hospital: { name: 'Apex City Hospital' },
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-    });
-    setIncomingRequest(null);
-    showToast({
-      title: 'Handshake Accepted',
-      message: 'Bed ICU-02 has been locked exclusively for the incoming ambulance.',
-      type: 'success',
-    });
+  const done = (title) => () => {
+    queryClient.invalidateQueries({ queryKey: qk.reservationsAll });
+    queryClient.invalidateQueries({ queryKey: ['beds'] });
+    queryClient.invalidateQueries({ queryKey: qk.hospitals });
+    queryClient.invalidateQueries({ queryKey: qk.hospitalRequestsAll });
+    showToast({ type: 'success', title });
   };
+  const fail = (title) => (err) => showToast({ type: 'error', title, message: errorMessage(err) });
+  const arrive = useMutation({ mutationFn: (id) => reservationsApi.arrive(id), onSuccess: done('Patient arrived — bed marked occupied'), onError: fail('Could not mark arrived') });
+  const release = useMutation({ mutationFn: (id) => reservationsApi.release(id), onSuccess: done('Reservation released — bed is available'), onError: fail('Could not release') });
+  return { arrive, release };
+}
 
-  const handleRejectRequest = (id, reason) => {
-    setIncomingRequest(null);
-    showToast({
-      title: 'Request Declined',
-      message: `Decline reason: ${reason?.reason || 'Other'}. Fallback automatically routed.`,
-      type: 'info',
-    });
-  };
+/** Mobile-first hospital dashboard (DESIGN.md §8.3). */
+export function HospitalDashboardPage() {
+  const hospital = useMyHospital();
+  const pending = usePendingRequests();
+  const reservations = useActiveReservations();
+  const { arrive, release } = useReservationMutations();
+
+  const pendingList = pending.data?.requests ?? [];
+  const offsetMs = pending.data ? new Date(pending.data.serverNow).getTime() - pending.data.fetchedAt : 0;
+  const h = hospital.data;
 
   return (
-    <div className="space-y-6">
-      {/* 1. Incoming Request Card (Pushes everything down per DESIGN.md §8.3) */}
-      {incomingRequest ? (
-        <IncomingRequestCard
-          request={incomingRequest}
-          onAccept={handleAcceptRequest}
-          onReject={handleRejectRequest}
-        />
-      ) : (
-        <div className="flex items-center justify-between p-3 bg-surface border border-border rounded-xl text-xs">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
-            <span className="font-semibold text-text">Emergency intake standby</span>
-            <span className="text-text-subtle">· Listening for requests</span>
+    <div className="space-y-5">
+      {/* 1. Incoming request — only when pending, pushes everything else down */}
+      <IncomingRequestSlot requests={pendingList} offsetMs={offsetMs} />
+      {pendingList.length > 1 && (
+        <p className="flex items-center gap-2 text-small font-medium text-danger">
+          <BellRing className="w-4 h-4" aria-hidden /> {pendingList.length - 1} more request{pendingList.length > 2 ? 's' : ''} waiting
+        </p>
+      )}
+      {!pending.isLoading && pendingList.length === 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-surface px-4 py-3 text-small text-text-muted">
+          <Inbox className="w-5 h-5 text-text-subtle" aria-hidden />
+          No pending requests. New ones appear here with an alert tone.
+        </div>
+      )}
+
+      {hospital.isError ? (
+        <ErrorState message={errorMessage(hospital.error)} onRetry={hospital.refetch} />
+      ) : hospital.isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-40" />
+          <div className="grid grid-cols-2 gap-2.5">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
           </div>
-
-          <button
-            type="button"
-            onClick={() =>
-              setIncomingRequest({
-                _id: 'req-demo-' + Date.now(),
-                expiresAt: new Date(Date.now() + 118000).toISOString(),
-                distanceKm: 4.2,
-                estimatedEtaMinutes: 9,
-                emergency: {
-                  demoPatientId: 'DEMO-P-0088',
-                  requirements: {
-                    bedType: 'ICU',
-                    equipment: ['VENTILATOR', 'OXYGEN'],
-                    specialties: ['TRAUMA'],
-                    urgency: 'CRITICAL',
-                  },
-                },
-              })
-            }
-            className="text-[11px] text-primary hover:underline font-semibold"
-          >
-            Demo: Simulate Incoming Request
-          </button>
+          <Skeleton className="h-12" />
         </div>
+      ) : (
+        <>
+          {/* 2. Bed counters */}
+          <section aria-labelledby="available-heading">
+            <div className="flex items-baseline justify-between mb-2.5">
+              <h2 id="available-heading" className="text-[15px] font-semibold text-text">
+                Available now
+              </h2>
+              <span className="text-small text-text-subtle tabular-nums">
+                {h.bedSummary?.byStatus?.AVAILABLE ?? 0} of {h.bedSummary?.total ?? 0} beds free
+              </span>
+            </div>
+            <BedCounters available={h.bedSummary?.available} />
+          </section>
+
+          {/* 3. Freshness + Confirm all */}
+          <Card className="space-y-3">
+            <FreshnessIndicator timestamp={h.bedSummary?.lastUpdatedAt ?? h.lastAvailabilityUpdate} />
+            <p className="text-small text-text-muted">Dispatchers rank you lower when availability is old. Confirm when nothing changed.</p>
+            <ConfirmAllButton hospitalId={h.id} className="w-full" />
+          </Card>
+
+          {/* 4. Load control */}
+          <Card>
+            <LoadControl hospital={h} />
+          </Card>
+        </>
       )}
 
-      {/* Active Reservation Notice (if any) */}
-      {activeReservation && (
-        <ReservationCard
-          reservation={activeReservation}
-          role="HOSPITAL"
-          onMarkArrived={() => {
-            setActiveReservation(null);
-            showToast({
-              title: 'Patient Arrived',
-              message: 'Bed occupancy registered. Hold completed.',
-              type: 'success',
-            });
-          }}
-          onRelease={() => {
-            setActiveReservation(null);
-            showToast({
-              title: 'Reservation Released',
-              message: 'Bed returned to available pool.',
-              type: 'info',
-            });
-          }}
-        />
-      )}
-
-      {/* 2. Bed Counters Grid */}
-      <div>
-        <h2 className="text-xs font-bold uppercase tracking-wider text-text-subtle mb-2.5">
-          Department Bed Availability
+      {/* 5. Active reservations */}
+      <section aria-labelledby="reservations-heading">
+        <h2 id="reservations-heading" className="text-[15px] font-semibold text-text mb-2.5">
+          Active reservations
         </h2>
-        <BedCounters counts={{ icu: 3, ventilator: 5, oxygen: 12, cardiac: 2, burns: 0 }} />
-      </div>
-
-      {/* 3. Freshness & Confirm All Action (Full width lg button per DESIGN.md §8.3) */}
-      <div className="p-4 bg-surface border border-border rounded-xl shadow-card space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-text">Hospital Verification Status</span>
-          <FreshnessIndicator timestamp={lastUpdate} />
-        </div>
-        <ConfirmAllButton
-          hospitalId="hosp-1"
-          onConfirmed={() => setLastUpdate(new Date().toISOString())}
-          className="w-full"
-        />
-      </div>
-
-      {/* 4. Operational Load Control */}
-      <LoadControl hospitalId="hosp-1" currentLoad={50} />
+        {reservations.isLoading ? (
+          <Skeleton className="h-28" />
+        ) : reservations.isError ? (
+          <ErrorState message={errorMessage(reservations.error)} onRetry={reservations.refetch} />
+        ) : reservations.data?.length ? (
+          <div className="space-y-3">
+            {reservations.data.map((r) => (
+              <ReservationCard
+                key={r.id}
+                reservation={r}
+                compact
+                actions={
+                  <ReservationActions
+                    size="lg"
+                    onArrive={() => arrive.mutate(r.id)}
+                    onRelease={() => release.mutate(r.id)}
+                    isArriving={arrive.isPending && arrive.variables === r.id}
+                    isReleasing={release.isPending && release.variables === r.id}
+                  />
+                }
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-small text-text-subtle">No beds are held right now.</p>
+        )}
+      </section>
     </div>
   );
 }

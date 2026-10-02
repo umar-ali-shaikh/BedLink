@@ -55,6 +55,29 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
+      fontSize: {
+        display: ['48px', { lineHeight: '52px', fontWeight: '700' }],
+        h1: ['28px', { lineHeight: '34px', fontWeight: '700' }],
+        h2: ['22px', { lineHeight: '28px', fontWeight: '600' }],
+        h3: ['18px', { lineHeight: '24px', fontWeight: '600' }],
+        body: ['15px', { lineHeight: '22px' }],
+        small: ['13px', { lineHeight: '18px' }],
+        caption: ['12px', { lineHeight: '16px', letterSpacing: '0.02em', fontWeight: '500' }],
+        'number-lg': ['32px', { lineHeight: '36px', fontWeight: '700' }],
+        'number-md': ['20px', { lineHeight: '24px', fontWeight: '600' }],
+      },
+      keyframes: {
+        'fade-in': { from: { opacity: '0', transform: 'translateY(4px)' }, to: { opacity: '1', transform: 'none' } },
+        'pulse-ring': {
+          '0%': { boxShadow: '0 0 0 0 rgba(11, 99, 206, 0.45)' },
+          '100%': { boxShadow: '0 0 0 14px rgba(11, 99, 206, 0)' },
+        },
+        shimmer: { '100%': { transform: 'translateX(100%)' } },
+      },
+      animation: {
+        'fade-in': 'fade-in 200ms ease-out both',
+        'pulse-ring': 'pulse-ring 1.6s ease-out infinite',
+      },
     },
   },
   plugins: [],

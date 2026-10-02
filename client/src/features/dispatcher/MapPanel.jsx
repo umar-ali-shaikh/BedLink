@@ -1,160 +1,143 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { formatEta } from '../../utils/formatEta';
 import { cn } from '../../utils/cn';
 
-// Custom HTML Icons for Leaflet markers
-function createHospitalIcon(rank, isSelected = false, isTop = false) {
+const CONFIDENCE_COLOR = {
+  HIGH: 'var(--color-success)',
+  MEDIUM: 'var(--color-primary)',
+  LOW: 'var(--color-warning)',
+};
+
+const rankIcon = (rank, color, selected) => {
+  const size = selected ? 38 : 30;
   return L.divIcon({
-    className: 'custom-leaflet-icon',
-    html: `
-      <div style="
-        background-color: ${isSelected ? '#0B63CE' : isTop ? '#15803D' : '#0F172A'};
-        color: white;
-        border: 2px solid white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-        border-radius: 9999px;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 13px;
-        font-family: Inter, sans-serif;
-        transform: translate(-16px, -16px);
-      ">
-        #${rank}
-      </div>
-    `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    className: 'bl-marker',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
+    html: `<div style="width:${size}px;height:${size}px;border-radius:999px;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font:700 ${selected ? 15 : 13}px Inter,sans-serif;border:2px solid #fff;box-shadow:0 0 0 ${selected ? 3 : 0}px var(--color-primary),0 4px 10px rgba(15,23,42,.25)">${rank}</div>`,
   });
-}
+};
 
 const patientIcon = L.divIcon({
-  className: 'custom-patient-icon',
-  html: `
-    <div style="
-      background-color: #B91C1C;
-      color: white;
-      border: 3px solid white;
-      box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.4), 0 4px 12px rgba(0,0,0,0.3);
-      border-radius: 9999px;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      transform: translate(-14px, -14px);
-    ">
-      🚑
-    </div>
-  `,
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
+  className: 'bl-marker',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+  html: '<div class="animate-pulse-ring" style="width:22px;height:22px;border-radius:999px;background:var(--color-primary);border:3px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.3)"></div>',
 });
 
-function MapRecenter({ center }) {
+function FitBounds({ points, padding = 40 }) {
   const map = useMap();
+  const key = points.map((p) => p.join(',')).join('|');
   useEffect(() => {
-    if (center && center[0] && center[1]) {
-      map.setView(center, map.getZoom(), { animate: true });
-    }
-  }, [center, map]);
+    if (!points.length) return;
+    if (points.length === 1) map.setView(points[0], 13);
+    else map.fitBounds(points, { padding: [padding, padding], maxZoom: 14 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map]);
   return null;
 }
 
-export function MapPanel({
-  patientLocation = { lat: 28.6315, lng: 77.2167 },
-  hospitals = [],
-  selectedHospitalId,
-  onSelectHospital,
-  className,
-}) {
-  const center = [patientLocation.lat || 28.6315, patientLocation.lng || 77.2167];
+function ClickToPick({ onPick }) {
+  useMapEvents({
+    click(e) {
+      onPick?.({ lat: +e.latlng.lat.toFixed(5), lng: +e.latlng.lng.toFixed(5) });
+    },
+  });
+  return null;
+}
+
+const valid = (p) => p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng);
+
+/**
+ * Leaflet + OSM map (DESIGN.md §5 Map panel): patient (blue pulse), candidates numbered by
+ * rank and coloured by confidence, selected larger with a ring, excluded grey (toggle).
+ * `others` = plain hospital markers before a search. The list always mirrors the map.
+ */
+export function MapPanel({ patientLocation, candidates = [], exclusions = [], others = [], selectedId, onSelect, onPickLocation, className }) {
+  const [showExcluded, setShowExcluded] = useState(true);
+  const patient = valid(patientLocation) ? [+patientLocation.lat, +patientLocation.lng] : null;
+
+  const points = useMemo(() => {
+    const pts = [];
+    if (patient) pts.push(patient);
+    candidates.forEach((c) => valid(c.coordinates) && pts.push([c.coordinates.lat, c.coordinates.lng]));
+    if (!candidates.length) others.forEach((h) => valid(h.coordinates) && pts.push([h.coordinates.lat, h.coordinates.lng]));
+    return pts;
+  }, [patient, candidates, others]);
 
   return (
-    <div className={cn('bg-surface border border-border rounded-xl overflow-hidden shadow-card relative flex flex-col h-[500px] lg:h-full min-h-[400px]', className)}>
-      <div className="p-3 bg-surface-muted border-b border-border flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-text">Real-time Location Map</span>
-          <span className="text-text-subtle">· Leaflet + OSM</span>
-        </div>
-        <div className="flex items-center gap-3 text-[11px] text-text-muted">
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-danger inline-block" /> Patient
+    <div className={cn('relative bg-surface border border-border rounded-lg shadow-card overflow-hidden flex flex-col', className)}>
+      <div className="flex items-center justify-between gap-2 px-4 h-11 border-b border-border text-small">
+        <span className="font-semibold text-text">Map</span>
+        <div className="flex items-center gap-3 text-[12px] text-text-muted">
+          <span className="hidden sm:inline-flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-primary" /> Patient
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-primary inline-block" /> Hospital
+          <span className="hidden sm:inline-flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-success" /> High
           </span>
+          <span className="hidden sm:inline-flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-warning" /> Low
+          </span>
+          {exclusions.length > 0 && (
+            <label className="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={showExcluded} onChange={(e) => setShowExcluded(e.target.checked)} className="accent-primary" style={{ fontSize: 'inherit' }} />
+              Excluded
+            </label>
+          )}
         </div>
       </div>
+      <div className="flex-1 min-h-[280px]">
+        <MapContainer center={patient ?? [19.076, 72.8777]} zoom={12} scrollWheelZoom className="h-full w-full">
+          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <FitBounds points={points} />
+          {onPickLocation && <ClickToPick onPick={onPickLocation} />}
 
-      <div className="flex-1 w-full h-full relative">
-        <MapContainer
-          center={center}
-          zoom={12}
-          scrollWheelZoom={false}
-          className="w-full h-full"
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          {!candidates.length &&
+            others.filter((h) => valid(h.coordinates)).map((h) => (
+              <CircleMarker key={h.id} center={[h.coordinates.lat, h.coordinates.lng]} radius={7} pathOptions={{ color: '#fff', weight: 2, fillColor: h.status === 'ACTIVE' ? '#0B63CE' : '#94A3B8', fillOpacity: 0.9 }}>
+                <Tooltip>{h.name}</Tooltip>
+              </CircleMarker>
+            ))}
 
-          <MapRecenter center={center} />
-
-          {/* Patient Marker */}
-          <Marker position={center} icon={patientIcon}>
-            <Popup>
-              <div className="text-xs p-1">
-                <strong className="block text-danger font-bold">🚑 Patient / Ambulance Location</strong>
-                <span className="text-text-muted">Dispatch coordinate source</span>
-              </div>
-            </Popup>
-          </Marker>
-
-          {/* Proximity Ring around Patient */}
-          <Circle
-            center={center}
-            radius={5000}
-            pathOptions={{ color: '#0B63CE', fillColor: '#0B63CE', fillOpacity: 0.05, weight: 1, dashArray: '4, 4' }}
-          />
-
-          {/* Hospital Candidate Markers */}
-          {hospitals.map((h, idx) => {
-            if (!h.location?.coordinates && (!h.lat || !h.lng)) return null;
-            const lat = h.location?.coordinates ? h.location.coordinates[1] : h.lat;
-            const lng = h.location?.coordinates ? h.location.coordinates[0] : h.lng;
-            const rank = idx + 1;
-            const isSelected = selectedHospitalId === (h._id || h.id);
-
-            return (
-              <Marker
-                key={h._id || h.id || idx}
-                position={[lat, lng]}
-                icon={createHospitalIcon(rank, isSelected, rank === 1)}
-                eventHandlers={{
-                  click: () => onSelectHospital && onSelectHospital(h),
-                }}
-              >
+          {showExcluded &&
+            exclusions.filter((x) => valid(x.coordinates)).map((x) => (
+              <CircleMarker key={x.hospitalId} center={[x.coordinates.lat, x.coordinates.lng]} radius={6} pathOptions={{ color: '#fff', weight: 2, fillColor: '#94A3B8', fillOpacity: 0.9 }}>
                 <Popup>
-                  <div className="text-xs p-1">
-                    <strong className="block text-text font-bold">#{rank} {h.name}</strong>
-                    <div className="text-primary font-bold mt-0.5">
-                      Match Score: {Math.round(h.totalScore || h.matchScore || 0)}/100
-                    </div>
-                    <div className="text-text-muted mt-0.5">
-                      ETA: {formatEta(h.estimatedEtaMinutes || h.etaMinutes)} ({h.distanceKm ? `${h.distanceKm.toFixed(1)} km` : ''})
-                    </div>
-                  </div>
+                  <strong>{x.hospitalName}</strong>
+                  <br />
+                  {(x.messages ?? []).join(' · ')}
                 </Popup>
-              </Marker>
-            );
-          })}
+              </CircleMarker>
+            ))}
+
+          {candidates.filter((c) => valid(c.coordinates)).map((c) => (
+            <Marker
+              key={c.hospitalId}
+              position={[c.coordinates.lat, c.coordinates.lng]}
+              icon={rankIcon(c.rank, CONFIDENCE_COLOR[c.confidence] ?? CONFIDENCE_COLOR.MEDIUM, c.hospitalId === selectedId)}
+              zIndexOffset={c.hospitalId === selectedId ? 1000 : 100 - c.rank}
+              eventHandlers={{ click: () => onSelect?.(c.hospitalId) }}
+            >
+              <Popup>
+                <strong>
+                  #{c.rank} {c.hospitalName}
+                </strong>
+                <br />
+                Score {c.score} · {c.etaMinutes} min est. · {c.distanceKm} km
+              </Popup>
+            </Marker>
+          ))}
+
+          {patient && (
+            <Marker position={patient} icon={patientIcon} zIndexOffset={2000}>
+              <Tooltip direction="top" offset={[0, -10]}>
+                Patient location
+              </Tooltip>
+            </Marker>
+          )}
         </MapContainer>
       </div>
     </div>

@@ -1,230 +1,191 @@
 import React, { useState } from 'react';
-import {
-  BedDouble,
-  Wind,
-  Activity,
-  HeartPulse,
-  Flame,
-  Search,
-  MapPin,
-  Siren,
-  TriangleAlert,
-  Info,
-} from 'lucide-react';
-import { BED_TYPES, EQUIPMENT } from '../../constants/bed';
-import { SPECIALTIES } from '../../constants/hospital';
-import { URGENCY } from '../../constants/emergency';
+import { Check, Crosshair, LocateFixed, MapPin, Search } from 'lucide-react';
+import { z } from 'zod';
 import { Button } from '../../components/Button';
+import { Segmented } from '../../components/Segmented';
+import { BED_TYPE_LABELS, BED_TYPE_VALUES, EQUIPMENT_LABELS, EQUIPMENT_VALUES } from '../../constants/bed';
+import { DEFAULT_PATIENT_LOCATION, SPECIALTY_LABELS, SPECIALTY_VALUES } from '../../constants/hospital';
+import { URGENCY_VALUES } from '../../constants/emergency';
 import { cn } from '../../utils/cn';
 
-const locationPresets = [
-  { name: 'City Center (Connaught Place)', lat: 28.6315, lng: 77.2167 },
-  { name: 'South District (Hauz Khas)', lat: 28.5494, lng: 77.2001 },
-  { name: 'East District (Preet Vihar)', lat: 28.6415, lng: 77.2954 },
-  { name: 'West District (Rajouri Garden)', lat: 28.6468, lng: 77.1213 },
-  { name: 'North District (Civil Lines)', lat: 28.6750, lng: 77.2250 },
-];
+const schema = z.object({
+  bedType: z.enum(BED_TYPE_VALUES),
+  equipment: z.array(z.enum(EQUIPMENT_VALUES)),
+  specialties: z.array(z.enum(SPECIALTY_VALUES)),
+  urgency: z.enum(URGENCY_VALUES),
+  lat: z.coerce.number({ invalid_type_error: 'Latitude must be a number' }).min(-90, 'Latitude must be between -90 and 90').max(90, 'Latitude must be between -90 and 90'),
+  lng: z.coerce.number({ invalid_type_error: 'Longitude must be a number' }).min(-180, 'Longitude must be between -180 and 180').max(180, 'Longitude must be between -180 and 180'),
+});
 
-export function EmergencyForm({ onSubmit, isLoading = false, className }) {
-  const [bedType, setBedType] = useState(BED_TYPES.ICU);
-  const [equipment, setEquipment] = useState([EQUIPMENT.VENTILATOR]);
-  const [specialties, setSpecialties] = useState([SPECIALTIES.CARDIOLOGY]);
-  const [urgency, setUrgency] = useState(URGENCY.CRITICAL);
-  const [selectedLocation, setSelectedLocation] = useState(locationPresets[0]);
-  const [notes, setNotes] = useState('');
+export const DEFAULT_REQUIREMENTS = {
+  bedType: 'ICU',
+  equipment: ['VENTILATOR'],
+  specialties: ['CARDIOLOGY'],
+  urgency: 'CRITICAL',
+};
 
-  const toggleEquipment = (item) => {
-    setEquipment((prev) =>
-      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
-    );
-  };
+const URGENCY_STYLE = {
+  CRITICAL: 'bg-danger border-danger text-text-inverse',
+  HIGH: 'bg-warning border-warning text-text-inverse',
+  MODERATE: 'bg-neutral-state border-neutral-state text-text-inverse',
+};
 
-  const toggleSpecialty = (item) => {
-    setSpecialties((prev) =>
-      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
-    );
-  };
+function ToggleChip({ active, onClick, children }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={active} className={cn('chip', active && 'chip-active')}>
+      {active && <Check className="w-3.5 h-3.5" aria-hidden />}
+      {children}
+    </button>
+  );
+}
 
-  const handleSubmit = (e) => {
+function Section({ step, title, children }) {
+  return (
+    <fieldset className="space-y-2.5">
+      <legend className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-text-muted mb-2.5">
+        <span className="w-5 h-5 rounded bg-neutral-soft text-text-muted flex items-center justify-center text-[10px]">{step}</span>
+        {title}
+      </legend>
+      {children}
+    </fieldset>
+  );
+}
+
+/**
+ * Requirement form (DESIGN.md §8.2 zone 1). No patient name/phone/notes fields exist on
+ * purpose (RULES.md §9). Location is controlled by the parent so a map click can set it.
+ */
+export function EmergencyForm({ value, onChange, location, onLocationChange, onSubmit, isSubmitting, disabled }) {
+  const [errors, setErrors] = useState({});
+  const [locating, setLocating] = useState(false);
+  const set = (patch) => onChange({ ...value, ...patch });
+  const toggle = (key, item) =>
+    set({ [key]: value[key].includes(item) ? value[key].filter((v) => v !== item) : [...value[key], item] });
+
+  const submit = (e) => {
     e.preventDefault();
-    onSubmit({
-      requirements: {
-        bedType,
-        equipment,
-        specialties,
-        urgency,
+    const parsed = schema.safeParse({ ...value, lat: location.lat, lng: location.lng });
+    if (!parsed.success) {
+      setErrors(Object.fromEntries(parsed.error.issues.map((i) => [i.path[0], i.message])));
+      return;
+    }
+    setErrors({});
+    const { lat, lng, urgency, ...requirements } = parsed.data;
+    onSubmit({ patientLocation: { lat, lng }, requirements, urgency });
+  };
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        onLocationChange({ lat: +pos.coords.latitude.toFixed(5), lng: +pos.coords.longitude.toFixed(5) });
+        setLocating(false);
       },
-      patientLocation: {
-        lat: selectedLocation.lat,
-        lng: selectedLocation.lng,
-      },
-      notes,
-    });
+      () => setLocating(false),
+      { timeout: 8000 }
+    );
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={cn('bg-surface border border-border rounded-xl p-5 shadow-card space-y-6', className)}
-    >
-      <div className="border-b border-border pb-3">
-        <h2 className="text-base font-bold text-text">Patient Emergency Requirements</h2>
-        <p className="text-xs text-text-muted mt-0.5">Specify clinical criteria to compute verified hospital matches</p>
-      </div>
+    <form onSubmit={submit} className="space-y-6" noValidate>
+      <Section step="1" title="Bed type">
+        <Segmented
+          label="Bed type"
+          value={value.bedType}
+          onChange={(bedType) => set({ bedType })}
+          options={BED_TYPE_VALUES.map((v) => ({ value: v, label: BED_TYPE_LABELS[v] }))}
+          disabled={disabled}
+        />
+      </Section>
 
-      {/* Bed Type Selection */}
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-text mb-2">
-          Required Bed Department
-        </label>
+      <Section step="2" title="Equipment">
+        <div className="flex flex-wrap gap-2">
+          {EQUIPMENT_VALUES.map((v) => (
+            <ToggleChip key={v} active={value.equipment.includes(v)} onClick={() => toggle('equipment', v)}>
+              {EQUIPMENT_LABELS[v]}
+            </ToggleChip>
+          ))}
+        </div>
+      </Section>
+
+      <Section step="3" title="Specialties">
+        <div className="flex flex-wrap gap-2">
+          {SPECIALTY_VALUES.map((v) => (
+            <ToggleChip key={v} active={value.specialties.includes(v)} onClick={() => toggle('specialties', v)}>
+              {SPECIALTY_LABELS[v]}
+            </ToggleChip>
+          ))}
+        </div>
+      </Section>
+
+      <Section step="4" title="Urgency">
+        <div role="radiogroup" aria-label="Urgency" className="grid grid-cols-3 gap-1.5">
+          {URGENCY_VALUES.map((u) => (
+            <button
+              key={u}
+              type="button"
+              role="radio"
+              aria-checked={value.urgency === u}
+              onClick={() => set({ urgency: u })}
+              className={cn(
+                'h-10 rounded-md border text-small font-semibold capitalize transition-colors',
+                value.urgency === u ? URGENCY_STYLE[u] : 'bg-surface border-border text-text-muted hover:text-text'
+              )}
+            >
+              {u.toLowerCase()}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section step="5" title="Patient location">
         <div className="grid grid-cols-2 gap-2">
-          {Object.values(BED_TYPES).map((type) => {
-            const isSelected = bedType === type;
-            return (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setBedType(type)}
-                className={cn(
-                  'h-11 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all',
-                  isSelected
-                    ? 'bg-primary text-text-inverse border-primary shadow-sm'
-                    : 'bg-surface border-border text-text hover:bg-surface-muted hover:border-border-strong'
-                )}
-              >
-                <BedDouble className="w-4 h-4 flex-shrink-0" />
-                <span>{type} Bed</span>
-              </button>
-            );
-          })}
+          <div>
+            <label htmlFor="lat" className="sr-only">
+              Latitude
+            </label>
+            <input
+              id="lat"
+              inputMode="decimal"
+              className={cn('input tabular-nums', errors.lat && 'border-danger')}
+              value={location.lat}
+              onChange={(e) => onLocationChange({ ...location, lat: e.target.value })}
+              placeholder="Latitude"
+              aria-invalid={!!errors.lat}
+            />
+          </div>
+          <div>
+            <label htmlFor="lng" className="sr-only">
+              Longitude
+            </label>
+            <input
+              id="lng"
+              inputMode="decimal"
+              className={cn('input tabular-nums', errors.lng && 'border-danger')}
+              value={location.lng}
+              onChange={(e) => onLocationChange({ ...location, lng: e.target.value })}
+              placeholder="Longitude"
+              aria-invalid={!!errors.lng}
+            />
+          </div>
         </div>
-      </div>
-
-      {/* Clinical Urgency */}
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-text mb-2">
-          Urgency Level
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { value: URGENCY.CRITICAL, label: 'Critical', icon: Siren, color: 'text-danger', selectedBg: 'bg-danger text-text-inverse border-danger' },
-            { value: URGENCY.HIGH, label: 'High', icon: TriangleAlert, color: 'text-warning', selectedBg: 'bg-warning text-text-inverse border-warning' },
-            { value: URGENCY.MODERATE, label: 'Moderate', icon: Info, color: 'text-text-muted', selectedBg: 'bg-neutral-state text-text-inverse border-neutral-state' },
-          ].map((u) => {
-            const isSelected = urgency === u.value;
-            const Icon = u.icon;
-            return (
-              <button
-                key={u.value}
-                type="button"
-                onClick={() => setUrgency(u.value)}
-                className={cn(
-                  'h-10 px-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all',
-                  isSelected
-                    ? `${u.selectedBg} shadow-sm`
-                    : 'bg-surface border-border text-text hover:bg-surface-muted'
-                )}
-              >
-                <Icon className={cn('w-3.5 h-3.5', isSelected ? 'text-text-inverse' : u.color)} />
-                <span>{u.label}</span>
-              </button>
-            );
-          })}
+        {(errors.lat || errors.lng) && <p className="text-small text-danger">{errors.lat || errors.lng}</p>}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-small">
+          <button type="button" className="inline-flex items-center gap-1 text-primary font-medium hover:underline" onClick={() => onLocationChange({ ...DEFAULT_PATIENT_LOCATION })}>
+            <MapPin className="w-3.5 h-3.5" aria-hidden /> Demo location
+          </button>
+          <button type="button" className="inline-flex items-center gap-1 text-primary font-medium hover:underline disabled:opacity-50" onClick={useMyLocation} disabled={locating}>
+            <LocateFixed className="w-3.5 h-3.5" aria-hidden /> {locating ? 'Locating…' : 'My location'}
+          </button>
+          <span className="inline-flex items-center gap-1 text-text-subtle">
+            <Crosshair className="w-3.5 h-3.5" aria-hidden /> or click the map
+          </span>
         </div>
-      </div>
+      </Section>
 
-      {/* Life Support Equipment */}
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-text mb-2">
-          Required Equipment
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {[
-            { id: EQUIPMENT.VENTILATOR, label: 'Ventilator', icon: Wind },
-            { id: EQUIPMENT.OXYGEN, label: 'Oxygen Supply', icon: Activity },
-            { id: EQUIPMENT.CARDIAC_MONITOR, label: 'Cardiac Monitor', icon: HeartPulse },
-          ].map((eq) => {
-            const isChecked = equipment.includes(eq.id);
-            const Icon = eq.icon;
-            return (
-              <button
-                key={eq.id}
-                type="button"
-                onClick={() => toggleEquipment(eq.id)}
-                className={cn(
-                  'h-10 px-3 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all text-left',
-                  isChecked
-                    ? 'bg-primary-soft text-primary border-primary font-bold'
-                    : 'bg-surface border-border text-text-muted hover:bg-surface-muted'
-                )}
-              >
-                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="truncate">{eq.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Medical Specialties */}
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-text mb-2">
-          Required Hospital Specialties
-        </label>
-        <div className="flex flex-wrap gap-1.5">
-          {Object.values(SPECIALTIES).map((spec) => {
-            const isChecked = specialties.includes(spec);
-            return (
-              <button
-                key={spec}
-                type="button"
-                onClick={() => toggleSpecialty(spec)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
-                  isChecked
-                    ? 'bg-text text-text-inverse border-text font-bold'
-                    : 'bg-surface border-border text-text-muted hover:bg-surface-muted'
-                )}
-              >
-                {spec.replace('_', ' ')}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Patient Location Presets */}
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-text mb-2">
-          Ambulance / Patient Location
-        </label>
-        <div className="space-y-2">
-          <select
-            value={selectedLocation.name}
-            onChange={(e) => {
-              const found = locationPresets.find((p) => p.name === e.target.value);
-              if (found) setSelectedLocation(found);
-            }}
-            className="w-full h-10 px-3 bg-surface border border-border rounded-lg text-xs font-medium text-text focus:outline-none focus:ring-2 focus:ring-focus"
-          >
-            {locationPresets.map((loc) => (
-              <option key={loc.name} value={loc.name}>
-                📍 {loc.name} ({loc.lat.toFixed(3)}, {loc.lng.toFixed(3)})
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <Button
-        type="submit"
-        variant="primary"
-        size="lg"
-        icon={Search}
-        isLoading={isLoading}
-        className="w-full mt-4"
-      >
-        Rank & Find Hospital Beds →
+      <Button type="submit" size="lg" icon={Search} className="w-full" isLoading={isSubmitting} disabled={disabled}>
+        Find beds
       </Button>
     </form>
   );

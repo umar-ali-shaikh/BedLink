@@ -1,41 +1,50 @@
-export const EMERGENCY_STATUS = {
+export const EMERGENCY_STATUS = Object.freeze({
   SEARCHING: 'SEARCHING',
   AWAITING_HOSPITAL: 'AWAITING_HOSPITAL',
   RESERVED: 'RESERVED',
   COMPLETED: 'COMPLETED',
   NO_MATCH: 'NO_MATCH',
   CANCELLED: 'CANCELLED',
-};
+});
 
-export const URGENCY = {
-  CRITICAL: 'CRITICAL',
-  HIGH: 'HIGH',
-  MODERATE: 'MODERATE',
-};
+export const ACTIVE_EMERGENCY_STATUSES = [
+  EMERGENCY_STATUS.SEARCHING,
+  EMERGENCY_STATUS.AWAITING_HOSPITAL,
+  EMERGENCY_STATUS.RESERVED,
+  EMERGENCY_STATUS.NO_MATCH,
+];
+export const CANCELLABLE_EMERGENCY_STATUSES = ACTIVE_EMERGENCY_STATUSES;
+export const REQUESTABLE_EMERGENCY_STATUSES = [EMERGENCY_STATUS.SEARCHING, EMERGENCY_STATUS.NO_MATCH];
 
-export const OFFER_STATUS = {
+export const URGENCY = Object.freeze({ CRITICAL: 'CRITICAL', HIGH: 'HIGH', MODERATE: 'MODERATE' });
+export const URGENCY_VALUES = Object.values(URGENCY);
+
+export const OFFER_STATUS = Object.freeze({
   PENDING: 'PENDING',
   ACCEPTED: 'ACCEPTED',
   REJECTED: 'REJECTED',
   TIMEOUT: 'TIMEOUT',
   CANCELLED: 'CANCELLED',
-};
+});
 
-export const CONFIDENCE_LEVELS = {
-  HIGH: 'HIGH',
-  MEDIUM: 'MEDIUM',
-  LOW: 'LOW',
-};
-
-export const FRESHNESS_TIERS = {
-  FRESH: 'FRESH',
-  RECENT: 'RECENT',
-  STALE: 'STALE',
-};
+export const RESERVATION_STATUS = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  FULFILLED: 'FULFILLED',
+  EXPIRED: 'EXPIRED',
+  RELEASED: 'RELEASED',
+});
 
 export const REJECT_REASONS = [
-  { id: 'NO_BED', label: 'No bed available' },
-  { id: 'NO_STAFF', label: 'Insufficient staff' },
-  { id: 'EQUIPMENT_ISSUE', label: 'Required equipment unavailable' },
-  { id: 'OTHER', label: 'Other operational constraint' },
+  { id: 'NO_BED', label: 'No bed' },
+  { id: 'NO_STAFF', label: 'No staff' },
+  { id: 'EQUIPMENT_ISSUE', label: 'Equipment issue' },
+  { id: 'OTHER', label: 'Other' },
 ];
+
+export const REJECT_REASON_LABELS = Object.freeze({
+  NO_BED: 'No bed',
+  NO_STAFF: 'No staff',
+  EQUIPMENT_ISSUE: 'Equipment issue',
+  OTHER: 'Other',
+  NO_BED_AT_ACCEPT: 'Bed was taken at accept',
+});

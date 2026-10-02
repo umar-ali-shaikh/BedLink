@@ -1,82 +1,60 @@
-import React, { useState } from 'react';
-import { Activity } from 'lucide-react';
-import { cn } from '../../utils/cn';
-import api from '../../services/api';
+import React from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { hospitalsApi } from '../hospitals/api';
 import { useToast } from '../../components/Toast';
+import { LOAD_PRESETS } from '../../constants/hospital';
+import { qk } from '../../services/queryKeys';
+import { errorMessage } from '../../services/api';
+import { cn } from '../../utils/cn';
 
-const loadTiers = [
-  { value: 25, label: 'Low', desc: 'Normal capacity', color: 'hover:border-success/50', activeColor: 'bg-success text-text-inverse border-success' },
-  { value: 50, label: 'Moderate', desc: 'Steady intake', color: 'hover:border-primary/50', activeColor: 'bg-primary text-text-inverse border-primary' },
-  { value: 75, label: 'High', desc: 'Heavy load', color: 'hover:border-warning/50', activeColor: 'bg-warning text-text-inverse border-warning' },
-  { value: 95, label: 'Critical', desc: 'Nearing divert', color: 'hover:border-danger/50', activeColor: 'bg-danger text-text-inverse border-danger' },
-];
+const nearest = (load) => LOAD_PRESETS.reduce((best, p) => (Math.abs(p.value - load) < Math.abs(best.value - load) ? p : best), LOAD_PRESETS[0]).value;
 
-export function LoadControl({ hospitalId, currentLoad = 50, onUpdated, className }) {
-  const [selectedLoad, setSelectedLoad] = useState(currentLoad);
-  const [isUpdating, setIsUpdating] = useState(false);
+/** Segmented Low 25 · Moderate 50 · High 75 · Critical 95 → currentLoad (DESIGN.md §8.3). */
+export function LoadControl({ hospital }) {
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
-
-  const handleSelect = async (val) => {
-    if (val === selectedLoad || isUpdating) return;
-    const oldVal = selectedLoad;
-    setSelectedLoad(val);
-    setIsUpdating(true);
-
-    try {
-      await api.patch(`/hospitals/${hospitalId}`, { currentLoad: val });
-      showToast({
-        title: 'Hospital Load Updated',
-        message: `Hospital operational load set to ${val}%.`,
-        type: 'info',
-      });
-      if (onUpdated) onUpdated(val);
-    } catch (err) {
-      setSelectedLoad(oldVal);
-      showToast({
-        title: 'Failed to update load',
-        message: err.message || 'Could not update hospital load.',
-        type: 'error',
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+  const mutation = useMutation({
+    mutationFn: (currentLoad) => hospitalsApi.update(hospital.id, { currentLoad }),
+    onMutate: async (currentLoad) => {
+      const key = qk.hospital(hospital.id);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (h) => (h ? { ...h, currentLoad } : h));
+      return { previous };
+    },
+    onError: (err, _v, ctx) => {
+      queryClient.setQueryData(qk.hospital(hospital.id), ctx?.previous);
+      showToast({ type: 'error', title: 'Load not updated', message: errorMessage(err) });
+    },
+    onSuccess: (_d, value) => showToast({ type: 'success', title: `Load set to ${value}%`, message: value >= 95 ? 'Critical load — you will not receive new requests.' : undefined }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: qk.hospital(hospital.id) }),
+  });
+  const current = nearest(hospital.currentLoad ?? 50);
 
   return (
-    <div className={cn('bg-surface border border-border rounded-xl p-5 shadow-card', className)}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold text-text">Hospital Operational Load</h3>
-        </div>
-        <span className="text-xs font-bold text-text tabular-nums px-2 py-0.5 rounded bg-surface-muted border border-border">
-          {selectedLoad}% Load
-        </span>
+    <div>
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-[15px] font-semibold text-text">Current load</h2>
+        <span className="text-small text-text-muted tabular-nums">{hospital.currentLoad}%</span>
       </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {loadTiers.map((tier) => {
-          const isActive = Math.abs(selectedLoad - tier.value) < 15;
+      <div role="radiogroup" aria-label="Current load" className="grid grid-cols-4 gap-1.5">
+        {LOAD_PRESETS.map((p) => {
+          const active = p.value === current;
           return (
             <button
-              key={tier.value}
+              key={p.value}
               type="button"
-              disabled={isUpdating}
-              onClick={() => handleSelect(tier.value)}
+              role="radio"
+              aria-checked={active}
+              disabled={mutation.isPending}
+              onClick={() => !active && mutation.mutate(p.value)}
               className={cn(
-                'min-h-[48px] p-2.5 rounded-lg border text-left flex flex-col justify-center transition-all duration-150',
-                isActive
-                  ? `${tier.activeColor} shadow-sm`
-                  : `bg-surface border-border text-text hover:bg-surface-muted ${tier.color} active:scale-98`
+                'h-14 rounded-md border flex flex-col items-center justify-center transition-colors disabled:opacity-60',
+                active ? (p.value >= 95 ? 'bg-danger border-danger text-text-inverse' : 'bg-text border-text text-text-inverse') : 'bg-surface border-border text-text hover:border-border-strong'
               )}
             >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-bold">{tier.label}</span>
-                <span className="text-[11px] font-mono opacity-80">{tier.value}%</span>
-              </div>
-              <span className={cn('text-[10px] mt-0.5', isActive ? 'opacity-90' : 'text-text-subtle')}>
-                {tier.desc}
-              </span>
+              <span className="text-small font-semibold">{p.label}</span>
+              <span className={cn('text-[12px] tabular-nums', active ? 'opacity-80' : 'text-text-subtle')}>{p.value}%</span>
             </button>
           );
         })}

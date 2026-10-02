@@ -1,102 +1,76 @@
 import React from 'react';
-import { Lock, Wind, Activity, HeartPulse, Check, Sparkles, User, CircleSlash } from 'lucide-react';
-import { BED_STATUS } from '../../constants/bed';
-import { FreshnessIndicator } from '../../components/FreshnessIndicator';
+import { Ambulance, Lock } from 'lucide-react';
+import { StatusIndicator } from '../../components/StatusIndicator';
+import { STAFF_BED_STATUSES } from '../../constants/bed';
+import { equipmentText } from '../../utils/labels';
+import { formatClock } from '../../utils/formatRelative';
 import { cn } from '../../utils/cn';
 
-const statusChips = [
-  { status: BED_STATUS.AVAILABLE, label: 'Available', icon: Check, color: 'hover:bg-success/10 hover:border-success text-success' },
-  { status: BED_STATUS.OCCUPIED, label: 'Occupied', icon: User, color: 'hover:bg-neutral-state/10 hover:border-neutral-state text-neutral-state' },
-  { status: BED_STATUS.CLEANING, label: 'Cleaning', icon: Sparkles, color: 'hover:bg-warning/10 hover:border-warning text-warning' },
-  { status: BED_STATUS.UNAVAILABLE, label: 'Unavailable', icon: CircleSlash, color: 'hover:bg-danger/10 hover:border-danger text-danger' },
-];
+const SEGMENT = {
+  AVAILABLE: { label: 'Available', active: 'bg-success border-success text-text-inverse' },
+  OCCUPIED: { label: 'Occupied', active: 'bg-text border-text text-text-inverse' },
+  CLEANING: { label: 'Cleaning', active: 'bg-warning border-warning text-text-inverse' },
+  UNAVAILABLE: { label: 'Unavail', active: 'bg-danger border-danger text-text-inverse' },
+};
 
-export function BedTile({ bed, onStatusChange, isUpdating = false }) {
-  const isReserved = bed.status === BED_STATUS.RESERVED;
-
+/**
+ * Bed card from the Stitch beds screen: label, equipment, status pill, one-tap status
+ * segments (≥ 48 px). RESERVED: chips disabled, "Held for incoming patient · until 10:33".
+ */
+export function BedTile({ bed, reservation, onChange, pendingStatus, disabled }) {
+  const reserved = bed.status === 'RESERVED';
   return (
-    <div
-      className={cn(
-        'p-4 rounded-xl border transition-all duration-150',
-        isReserved
-          ? 'bg-primary-soft/40 border-primary shadow-sm'
-          : 'bg-surface border-border hover:border-border-strong shadow-card'
-      )}
-    >
-      {/* Header: Bed Number & Equipment */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-base font-bold text-text tabular-nums">{bed.bedNumber}</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-surface-muted text-text-muted border border-border">
-              {bed.type}
-            </span>
-          </div>
-          <div className="mt-1">
-            <FreshnessIndicator timestamp={bed.updatedAt} />
-          </div>
+    <article className={cn('bg-surface border rounded-lg shadow-card p-4', reserved ? 'border-primary/40' : 'border-border')}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-[18px] font-bold text-text">{bed.label}</h3>
+          <p className="text-small text-text-muted">{equipmentText(bed.equipment)}</p>
         </div>
-
-        {/* Equipment icons */}
-        <div className="flex items-center gap-1 text-text-subtle">
-          {bed.equipment?.includes('VENTILATOR') && (
-            <span title="Ventilator equipped" className="p-1 rounded bg-neutral-soft text-primary">
-              <Wind className="w-3.5 h-3.5" />
-            </span>
-          )}
-          {bed.equipment?.includes('CARDIAC_MONITOR') && (
-            <span title="Cardiac monitor" className="p-1 rounded bg-neutral-soft text-danger">
-              <HeartPulse className="w-3.5 h-3.5" />
-            </span>
-          )}
-          {bed.equipment?.includes('OXYGEN') && (
-            <span title="Oxygen supply" className="p-1 rounded bg-neutral-soft text-success">
-              <Activity className="w-3.5 h-3.5" />
-            </span>
-          )}
-        </div>
+        <StatusIndicator kind="bed" status={bed.status} look="caps" />
       </div>
 
-      {/* Reserved State */}
-      {isReserved ? (
-        <div className="mt-3 p-3 rounded-lg bg-primary text-text-inverse flex items-center justify-between gap-3 shadow-sm">
-          <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4 flex-shrink-0 animate-pulse" />
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider">Locked for Reservation</p>
-              <p className="text-[11px] text-primary-soft">
-                Held for incoming patient {bed.reservationHoldUntil ? `· until ${new Date(bed.reservationHoldUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
-              </p>
-            </div>
-          </div>
-          <span className="text-xs bg-white/20 px-2 py-0.5 rounded font-mono">LOCKED</span>
-        </div>
-      ) : (
-        /* Status Chips Row with touch target >= 48px */
-        <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-          {statusChips.map((chip) => {
-            const isCurrent = bed.status === chip.status;
-            const Icon = chip.icon;
-            return (
-              <button
-                key={chip.status}
-                type="button"
-                disabled={isUpdating}
-                onClick={() => onStatusChange(bed._id, chip.status)}
-                className={cn(
-                  'min-h-[48px] px-2 py-2 rounded-lg text-xs font-semibold flex flex-col items-center justify-center gap-1 border transition-all',
-                  isCurrent
-                    ? 'bg-text text-text-inverse border-text shadow-sm'
-                    : `bg-surface border-border text-text-muted ${chip.color} active:scale-95`
-                )}
-              >
-                <Icon className={cn('w-4 h-4', isCurrent ? 'text-text-inverse' : '')} />
-                <span>{chip.label}</span>
-              </button>
-            );
-          })}
+      {reserved && (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-md bg-primary-soft border border-primary/20 px-3 py-2 text-small text-primary">
+          <span className="inline-flex items-center gap-1.5 font-semibold min-w-0">
+            <Ambulance className="w-4 h-4 shrink-0" aria-hidden />
+            <span className="truncate">Held for incoming patient</span>
+          </span>
+          {reservation && <span className="font-semibold tabular-nums shrink-0">until {formatClock(reservation.expiresAt)}</span>}
         </div>
       )}
-    </div>
+
+      <div className="relative mt-3 grid grid-cols-4 gap-1.5" role="radiogroup" aria-label={`Status of ${bed.label}`}>
+        {STAFF_BED_STATUSES.map((s) => {
+          const active = bed.status === s;
+          const loading = pendingStatus === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              disabled={reserved || disabled || active}
+              onClick={() => onChange(bed, s)}
+              className={cn(
+                'h-12 rounded-md border text-[13px] font-semibold transition-colors',
+                active ? SEGMENT[s].active : 'bg-surface border-border text-text hover:border-border-strong',
+                reserved && 'opacity-40',
+                loading && 'animate-pulse-gentle',
+                !reserved && active && 'disabled:opacity-100 cursor-default'
+              )}
+            >
+              {SEGMENT[s].label}
+            </button>
+          );
+        })}
+        {reserved && (
+          <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="inline-flex items-center gap-1.5 rounded bg-primary-soft border border-primary/20 px-2.5 py-1 text-[12px] font-semibold text-primary">
+              <Lock className="w-3.5 h-3.5" aria-hidden /> Locked by reservation
+            </span>
+          </span>
+        )}
+      </div>
+    </article>
   );
 }

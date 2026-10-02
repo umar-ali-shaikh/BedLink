@@ -58,9 +58,30 @@ run). Offline, point it at a local binary: `MONGOMS_SYSTEM_BINARY=/path/to/mongo
 Using a standalone local `mongod` (no replica set)? Set `MONGO_TRANSACTIONS=false`; the bed
 lock then relies on atomic updates + compensation (docs/ARCHITECTURE.md §13.3).
 
-### Frontend (`client/`) — not started
+### Frontend (`client/`) — ready
 
-Scaffolded folders only. Once built: `npm install` and `npm run dev` in `client/`.
+React 18 + Vite + Tailwind, wired to the API (TanStack Query) and Socket.IO (live updates).
+Start the server first, then:
+
+```bash
+cd client
+npm install
+npm run dev                   # http://localhost:5173 (proxies /api and /socket.io to :5000)
+```
+
+In dev the browser only talks to Vite, which proxies `/api` and `/socket.io` to
+`VITE_PROXY_TARGET` (default `http://localhost:5000`), so cookies work with no CORS setup and
+the hospital UI can be opened from a phone on the same network. For a production build set
+`VITE_API_URL` (e.g. `https://bedlink-api.onrender.com/api`) and `VITE_SOCKET_URL`, then
+`npm run build`.
+
+| Role | Screens |
+|---|---|
+| Dispatcher | `/dispatcher/dashboard`, `/dispatcher/emergency/new` (requirements · ranked hospitals · map), `/dispatcher/emergency/:id` (countdown, reservation, timeline) |
+| Hospital (mobile-first) | `/hospital/dashboard` (incoming request with Accept/Reject, counters, Confirm all, load), `/hospital/beds`, `/hospital/requests` |
+| Admin | `/admin/dashboard` (KPIs, outcomes chart, live emergencies, hospitals, CSV export), `/admin/hospitals` (create/edit + beds), `/admin/users`, `/admin/emergencies` |
+
+The login page has one-click demo account buttons (hide them with `VITE_SHOW_DEMO_ACCOUNTS=false`).
 
 ## Demo accounts
 

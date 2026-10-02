@@ -1,59 +1,42 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, X, AlertCircle } from 'lucide-react';
+import { ChevronRight, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
-export function ExcludedList({ excluded = [], className }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  if (!excluded || excluded.length === 0) return null;
+/** "Why not this hospital?" — collapsed by default (DESIGN.md §5). */
+export function ExcludedList({ exclusions = [], defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (!exclusions.length) return null;
 
   return (
-    <div className={cn('bg-surface border border-border rounded-xl overflow-hidden shadow-sm', className)}>
+    <section className="bg-surface border border-border rounded-lg">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-5 py-3.5 flex items-center justify-between bg-surface hover:bg-surface-muted transition-colors text-left"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-2 px-4 h-12 text-small font-semibold text-text-muted hover:text-text"
       >
-        <div className="flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-text-subtle" />
-          <span className="text-xs font-semibold text-text">
-            {excluded.length} hospital{excluded.length === 1 ? '' : 's'} excluded from recommendations
-          </span>
-          <span className="text-[11px] text-text-subtle">(Why not these?)</span>
-        </div>
-        {isOpen ? <ChevronDown className="w-4 h-4 text-text-subtle" /> : <ChevronRight className="w-4 h-4 text-text-subtle" />}
+        <span>
+          {exclusions.length} hospital{exclusions.length === 1 ? '' : 's'} excluded <span className="font-normal text-text-subtle">— why not?</span>
+        </span>
+        <ChevronRight className={cn('w-4 h-4 transition-transform', open && 'rotate-90')} aria-hidden />
       </button>
-
-      {isOpen && (
-        <div className="divide-y divide-border border-t border-border bg-surface-muted/30 animate-in fade-in duration-100">
-          {excluded.map((item, idx) => (
-            <div key={item.hospital?._id || idx} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-sm font-semibold text-text-muted">
-                  {item.hospital?.name || item.name}
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                  {item.reasons?.map((reason, rIdx) => (
-                    <span
-                      key={rIdx}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-danger-soft text-danger border border-danger/20"
-                    >
-                      <X className="w-3 h-3 flex-shrink-0" />
-                      <span>{reason}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {item.distanceKm != null && (
-                <span className="text-xs text-text-subtle tabular-nums">
-                  {item.distanceKm.toFixed(1)} km away
-                </span>
-              )}
-            </div>
+      {open && (
+        <ul className="border-t border-border divide-y divide-border">
+          {exclusions.map((ex) => (
+            <li key={ex.hospitalId} className="px-4 py-3">
+              <p className="text-small font-semibold text-text-muted">{ex.hospitalName}</p>
+              <ul className="mt-1 space-y-0.5">
+                {(ex.messages?.length ? ex.messages : ex.reasons).map((m) => (
+                  <li key={m} className="flex items-start gap-1.5 text-small text-text-subtle">
+                    <X className="w-3.5 h-3.5 text-danger mt-0.5 shrink-0" aria-hidden />
+                    {m}
+                  </li>
+                ))}
+              </ul>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+    </section>
   );
 }

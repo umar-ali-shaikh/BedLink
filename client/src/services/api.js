@@ -1,23 +1,51 @@
 import axios from 'axios';
 
+/**
+ * Axios instance (ARCHITECTURE.md §4). Cookie auth (`bl_token`) needs withCredentials.
+ * Resolves to the `data` of `{ success, data }`; rejects with `{ message, code, status, details }`.
+ */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 20000,
 });
 
+const unauthorizedListeners = new Set();
+export const onUnauthorized = (fn) => {
+  unauthorizedListeners.add(fn);
+  return () => unauthorizedListeners.delete(fn);
+};
+
+const FRIENDLY = {
+  NETWORK_ERROR: 'Cannot reach the BedLink server. Check your connection and try again.',
+  RATE_LIMITED: 'Too many requests — please wait a moment and try again.',
+  INTERNAL_ERROR: 'Something went wrong on the server. Please try again.',
+};
+
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => response.data?.data,
   (error) => {
-    const errorData = error.response?.data || {
-      success: false,
-      message: error.message || 'An unexpected error occurred',
-      code: 'NETWORK_ERROR',
+    const status = error.response?.status ?? 0;
+    const body = error.response?.data;
+    const code = body?.code || (status ? 'INTERNAL_ERROR' : 'NETWORK_ERROR');
+    const normalised = {
+      status,
+      code,
+      message: body?.message || FRIENDLY[code] || 'Something went wrong',
+      details: body?.details,
     };
-    return Promise.reject(errorData);
+    if (status === 401 && !error.config?.url?.includes('/auth/')) {
+      unauthorizedListeners.forEach((fn) => fn());
+    }
+    return Promise.reject(normalised);
   }
 );
+
+/** First field message for validation errors, else the message. */
+export function errorMessage(err) {
+  if (err?.details?.length) return err.details.map((d) => d.message).join(' · ');
+  return err?.message || 'Something went wrong';
+}
 
 export default api;

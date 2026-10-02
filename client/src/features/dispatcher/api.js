@@ -1,12 +1,11 @@
 import api from '../../services/api';
+import { statusParam } from '../../services/queryKeys';
 
 export const emergencyApi = {
-  createEmergency: (data) => api.post('/emergencies', data),
-  getEmergency: (id) => api.get(`/emergencies/${id}`),
-  getActiveEmergencies: () => api.get('/emergencies?active=true'),
-  getAllEmergencies: (params) => api.get('/emergencies', { params }),
-  requestHospital: (emergencyId, hospitalId) => api.post(`/emergencies/${emergencyId}/request-hospital`, { hospitalId }),
-  cancelEmergency: (emergencyId, reason) => api.post(`/emergencies/${emergencyId}/cancel`, { reason }),
-  releaseReservation: (reservationId) => api.post(`/reservations/${reservationId}/release`),
-  markPatientArrived: (reservationId) => api.post(`/reservations/${reservationId}/arrive`),
+  create: (body) => api.post('/emergencies', body),
+  list: (statuses) => api.get('/emergencies', { params: statusParam(statuses) }),
+  get: (id) => api.get(`/emergencies/${id}`),
+  /** Omit hospitalId to offer the current top candidate. */
+  requestHospital: (id, hospitalId) => api.post(`/emergencies/${id}/request-hospital`, hospitalId ? { hospitalId } : {}),
+  cancel: (id) => api.post(`/emergencies/${id}/cancel`),
 };

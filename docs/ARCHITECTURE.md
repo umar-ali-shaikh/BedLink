@@ -800,8 +800,9 @@ reservation in the DB.
 | `CONFIDENCE_TIMEOUT_WINDOW_MINUTES` | `30` | confidence downgrade window (§10.5) |
 | `AVG_AMBULANCE_SPEED_KMPH` | `30` | eta |
 | `ROAD_FACTOR` | `1.3` | eta |
-| `VITE_API_URL` | `http://localhost:5000/api` | client |
-| `VITE_SOCKET_URL` | `http://localhost:5000` | client |
+| `VITE_API_URL` | `/api` (Vite dev proxy) | client — set to the deployed API for production builds |
+| `VITE_SOCKET_URL` | page origin (Vite dev proxy) | client — set to the deployed server for production builds |
+| `VITE_PROXY_TARGET` | `http://localhost:5000` | client dev server proxy target |
 
 ---
 

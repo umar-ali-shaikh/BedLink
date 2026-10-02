@@ -31,9 +31,14 @@ export function ConfidenceBadge({ level = 'MEDIUM', reasons = [], className }) {
         type="button"
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
-        onClick={() => setShowTooltip((prev) => !prev)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowTooltip((prev) => !prev);
+        }}
+        onBlur={() => setShowTooltip(false)}
+        aria-expanded={showTooltip}
         className={cn(
-          'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wider border cursor-help transition-opacity hover:opacity-90',
+          'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full whitespace-nowrap text-[11px] font-semibold tracking-wider border cursor-help transition-opacity hover:opacity-90',
           item.variant,
           className
         )}
@@ -43,10 +48,10 @@ export function ConfidenceBadge({ level = 'MEDIUM', reasons = [], className }) {
       </button>
 
       {showTooltip && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 w-72 p-3 bg-surface border border-border rounded-md shadow-raised text-xs text-text animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-72 p-3 bg-surface border border-border rounded-md shadow-raised text-xs text-text animate-fade-in">
           <div className="flex items-center gap-1.5 font-semibold text-text mb-1">
             <Info className="w-3.5 h-3.5 text-primary" />
-            <span>Confidence Assessment</span>
+            <span>Why this confidence</span>
           </div>
 
           {reasons && reasons.length > 0 ? (

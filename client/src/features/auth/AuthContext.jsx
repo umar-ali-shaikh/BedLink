@@ -1,70 +1,64 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from './api';
+import { onUnauthorized } from '../../services/api';
 import { socket } from '../../socket';
 
-const AuthContext = createContext({
-  user: null,
-  isLoading: true,
-  login: async () => {},
-  logout: async () => {},
-});
+const AuthContext = createContext({ user: null, isLoading: true, login: async () => null, logout: async () => {} });
+
+/** (Re)connect so the handshake carries the fresh cookie and the server joins our rooms. */
+function connectSocket() {
+  if (socket.connected) socket.disconnect();
+  socket.connect();
+}
 
 export function AuthProvider({ children }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function checkAuth() {
-      try {
-        const response = await authApi.getMe();
-        if (response?.data?.user) {
-          setUser(response.data.user);
-          socket.connect();
-          if (response.data.user.role === 'HOSPITAL' && response.data.user.hospitalId) {
-            socket.emit('join:hospital', { hospitalId: response.data.user.hospitalId });
-          } else if (response.data.user.role === 'DISPATCHER') {
-            socket.emit('join:dispatcher', { userId: response.data.user._id });
-          }
-        }
-      } catch (err) {
-        setUser(null);
-        socket.disconnect();
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    checkAuth();
+    let cancelled = false;
+    authApi
+      .me()
+      .then((data) => {
+        if (cancelled) return;
+        setUser(data.user);
+        connectSocket();
+      })
+      .catch(() => !cancelled && setUser(null))
+      .finally(() => !cancelled && setIsLoading(false));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const login = async (credentials) => {
-    const res = await authApi.login(credentials);
-    if (res?.data?.user) {
-      setUser(res.data.user);
-      socket.connect();
-      if (res.data.user.role === 'HOSPITAL' && res.data.user.hospitalId) {
-        socket.emit('join:hospital', { hospitalId: res.data.user.hospitalId });
-      } else if (res.data.user.role === 'DISPATCHER') {
-        socket.emit('join:dispatcher', { userId: res.data.user._id });
-      }
-      return res.data.user;
-    }
-    return null;
-  };
+  const clearSession = useCallback(() => {
+    socket.disconnect();
+    queryClient.clear();
+    setUser(null);
+  }, [queryClient]);
 
-  const logout = async () => {
+  // Expired cookie (8 h) → back to login.
+  useEffect(() => onUnauthorized(clearSession), [clearSession]);
+
+  const login = useCallback(async (credentials) => {
+    const data = await authApi.login(credentials);
+    setUser(data.user);
+    connectSocket();
+    return data.user;
+  }, []);
+
+  const logout = useCallback(async () => {
     try {
       await authApi.logout();
     } finally {
-      setUser(null);
-      socket.disconnect();
+      clearSession();
     }
-  };
+  }, [clearSession]);
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo(() => ({ user, isLoading, login, logout }), [user, isLoading, login, logout]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

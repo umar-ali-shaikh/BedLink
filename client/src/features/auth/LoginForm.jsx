@@ -1,157 +1,140 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BedDouble, LogIn, Shield, PhoneCall, Building2 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AlertCircle, ArrowRight, Eye, EyeOff, Lock } from 'lucide-react';
 import { useAuth } from './useAuth';
 import { Button } from '../../components/Button';
-import { ROUTES } from '../../constants/routes';
-import { useToast } from '../../components/Toast';
+import { Logo } from '../../components/Logo';
+import { HOME_BY_ROLE } from '../../constants/routes';
+import { errorMessage } from '../../services/api';
+
+/** Seeded demo accounts (server `npm run seed`). Demo-only passwords. */
+const DEMO_ACCOUNTS = [
+  { label: 'Dispatcher', email: 'dispatcher1@bedlink.demo', password: 'Dispatch@123' },
+  { label: 'Hospital', email: 'lakeside@bedlink.demo', password: 'Hospital@123' },
+  { label: 'Admin', email: 'admin@bedlink.demo', password: 'Admin@123' },
+];
+const SHOW_DEMO = import.meta.env.VITE_SHOW_DEMO_ACCOUNTS !== 'false';
 
 export function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { showToast } = useToast();
+  const location = useLocation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please provide both email and password');
+    if (!email.trim() || !password) {
+      setError('Enter your email and password.');
       return;
     }
-
     setError('');
     setIsLoading(true);
-
     try {
-      const user = await login({ email, password });
-      showToast({
-        title: 'Signed in successfully',
-        message: `Welcome back, ${user.name || user.email}`,
-        type: 'success',
-      });
-
-      if (user.role === 'ADMIN') {
-        navigate(ROUTES.ADMIN_DASHBOARD);
-      } else if (user.role === 'DISPATCHER') {
-        navigate(ROUTES.DISPATCHER_DASHBOARD);
-      } else if (user.role === 'HOSPITAL') {
-        navigate(ROUTES.HOSPITAL_DASHBOARD);
-      } else {
-        navigate('/');
-      }
+      const user = await login({ email: email.trim(), password });
+      const home = HOME_BY_ROLE[user.role];
+      const from = location.state?.from?.pathname;
+      const prefix = home.split('/')[1];
+      navigate(from && from.startsWith(`/${prefix}/`) ? from : home, { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid email or password');
-    } finally {
+      setError(err.code === 'INVALID_CREDENTIALS' ? 'Invalid email or password.' : errorMessage(err));
       setIsLoading(false);
     }
   };
 
-  const handleQuickFill = (demoEmail, demoPass) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
+  const fill = (account) => {
+    setEmail(account.email);
+    setPassword(account.password);
     setError('');
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="bg-surface border border-border rounded-xl shadow-raised p-8">
-        {/* Brand header */}
-        <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-primary-soft flex items-center justify-center text-primary mb-3 shadow-sm">
-            <BedDouble className="w-7 h-7" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-text">BedLink</h1>
-          <p className="text-sm text-text-muted mt-1 font-medium">Find the right bed. Right now.</p>
-        </div>
+    <div className="w-full max-w-[360px]">
+      <div className="bg-surface border border-border rounded-lg shadow-card px-6 pt-6 pb-5">
+        <Logo size="lg" />
+        <p className="text-small text-text-muted mt-2">Find the right bed. Right now.</p>
 
-        {error && (
-          <div className="mb-6 p-3 bg-danger-soft border border-danger/20 rounded-md text-xs font-medium text-danger text-center animate-in fade-in">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
           <div>
-            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5">
-              Email Address
+            <label htmlFor="email" className="label">
+              Email
             </label>
             <input
+              id="email"
               type="email"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. dispatcher@bedlink.demo"
-              className="w-full h-11 px-3.5 bg-surface border border-border rounded-md text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent transition-all"
-              required
+              placeholder="you@bedlink.demo"
+              className="input h-11"
+              aria-invalid={!!error}
+              autoFocus
             />
           </div>
-
           <div>
-            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5">
+            <label htmlFor="password" className="label">
               Password
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="w-full h-11 px-3.5 bg-surface border border-border rounded-md text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent transition-all"
-              required
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="input h-11 pr-11"
+                aria-invalid={!!error}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded text-text-subtle hover:text-text"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
-          <Button
-            type="submit"
-            size="lg"
-            variant="primary"
-            isLoading={isLoading}
-            icon={LogIn}
-            className="w-full mt-2"
-          >
-            Sign In
+          {error && (
+            <p role="alert" className="flex items-start gap-2 text-small text-danger bg-danger-soft rounded-md px-3 py-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
+              {error}
+            </p>
+          )}
+
+          <Button type="submit" size="lg" className="w-full" isLoading={isLoading}>
+            <span className="inline-flex items-center gap-2">
+              Sign in <ArrowRight className="w-4 h-4" aria-hidden />
+            </span>
           </Button>
         </form>
 
-        {/* Demo Accounts Quick-Fill Section */}
-        <div className="mt-8 pt-6 border-t border-border">
-          <p className="text-xs font-semibold text-text-subtle uppercase tracking-wider text-center mb-3">
-            Demo Accounts (1-Click Fill)
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('dispatcher@bedlink.demo', 'DemoPass123!')}
-              className="flex flex-col items-center p-2.5 rounded-lg border border-border hover:border-primary/50 hover:bg-primary-soft/30 transition-all text-center group"
-            >
-              <PhoneCall className="w-4 h-4 text-primary mb-1 group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-medium text-text">Dispatcher</span>
-              <span className="text-[10px] text-text-subtle">Control room</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickFill('hospital@bedlink.demo', 'DemoPass123!')}
-              className="flex flex-col items-center p-2.5 rounded-lg border border-border hover:border-primary/50 hover:bg-primary-soft/30 transition-all text-center group"
-            >
-              <Building2 className="w-4 h-4 text-success mb-1 group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-medium text-text">Hospital</span>
-              <span className="text-[10px] text-text-subtle">Bed staff</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickFill('admin@bedlink.demo', 'DemoPass123!')}
-              className="flex flex-col items-center p-2.5 rounded-lg border border-border hover:border-primary/50 hover:bg-primary-soft/30 transition-all text-center group"
-            >
-              <Shield className="w-4 h-4 text-warning mb-1 group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-medium text-text">Admin</span>
-              <span className="text-[10px] text-text-subtle">Full access</span>
-            </button>
-          </div>
+        <div className="mt-5 pt-4 border-t border-border flex items-center justify-between text-[12px] text-text-subtle">
+          <span className="inline-flex items-center gap-1.5">
+            <Lock className="w-3.5 h-3.5" aria-hidden /> Secure session cookie
+          </span>
+          <span>v0.1.0</span>
         </div>
       </div>
+
+      {SHOW_DEMO && (
+        <div className="mt-4 text-center text-small text-text-subtle">
+          <p>
+            Demo accounts:{' '}
+            {DEMO_ACCOUNTS.map((a) => (
+              <button key={a.label} type="button" onClick={() => fill(a)} className="mx-1.5 font-semibold text-primary hover:underline">
+                {a.label}
+              </button>
+            ))}
+          </p>
+          <p className="text-[12px] mt-1">Simulated data · hackathon build</p>
+        </div>
+      )}
     </div>
   );
 }

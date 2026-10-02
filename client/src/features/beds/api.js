@@ -1,8 +1,8 @@
 import api from '../../services/api';
 
-export const bedApi = {
-  getHospitalBeds: (hospitalId) => api.get(`/hospitals/${hospitalId}/beds`),
-  updateBedStatus: (bedId, status) => api.patch(`/beds/${bedId}`, { status }),
-  confirmAllBeds: (hospitalId) => api.post(`/hospitals/${hospitalId}/beds/confirm`),
-  getBedSummary: () => api.get('/beds/summary'),
+export const bedsApi = {
+  list: (hospitalId) => api.get(`/hospitals/${hospitalId}/beds`),
+  create: (hospitalId, body) => api.post(`/hospitals/${hospitalId}/beds`, body),
+  updateStatus: (bedId, status) => api.patch(`/beds/${bedId}`, { status }),
+  confirmAll: (hospitalId) => api.post(`/hospitals/${hospitalId}/beds/confirm`),
 };

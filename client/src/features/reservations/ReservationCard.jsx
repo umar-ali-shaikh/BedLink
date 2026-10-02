@@ -1,100 +1,60 @@
 import React from 'react';
-import { Lock, Building2, UserCheck, Ban, Clock } from 'lucide-react';
+import { BedDouble, Lock } from 'lucide-react';
 import { CountdownTimer } from '../../components/CountdownTimer';
 import { Button } from '../../components/Button';
-import { cn } from '../../utils/cn';
+import { equipmentText } from '../../utils/labels';
+import { formatClock } from '../../utils/formatRelative';
 
-export function ReservationCard({
-  reservation,
-  onRelease,
-  onMarkArrived,
-  isReleasing = false,
-  isArriving = false,
-  role = 'DISPATCHER',
-  className,
-}) {
+/** Held bed: label, hospital, "Held until 10:33" + hold countdown, role actions (DESIGN.md §5). */
+export function ReservationCard({ reservation, hospitalName, patientRef, offsetMs = 0, actions, compact }) {
   if (!reservation) return null;
-
-  const bedLabel = reservation.bed?.bedNumber || reservation.bedNumber || 'Assigned Bed';
-  const hospitalName = reservation.hospital?.name || 'Assigned Hospital';
-  const holdUntil = reservation.expiresAt || reservation.holdExpiresAt;
-
+  const bed = reservation.bed;
   return (
-    <div
-      className={cn(
-        'bg-surface border-2 border-primary rounded-xl p-5 shadow-raised overflow-hidden relative',
-        className
-      )}
-    >
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-primary-soft text-primary">
-            <Lock className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-              CONFIRMED EMERGENCY BED RESERVATION
-            </span>
-            <h3 className="text-base font-bold text-text">{hospitalName}</h3>
+    <article className="bg-surface border border-primary/30 rounded-lg shadow-card p-4 animate-fade-in">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <span className="w-10 h-10 rounded-md bg-primary-soft text-primary flex items-center justify-center shrink-0">
+            <BedDouble className="w-5 h-5" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-h3 text-text">
+              Bed {bed?.label ?? '—'}
+              {hospitalName && <span className="text-text-muted font-normal"> · {hospitalName}</span>}
+            </p>
+            <p className="text-small text-text-muted">
+              {patientRef ? `Patient ${patientRef} · ` : ''}
+              {bed ? equipmentText(bed.equipment) : ''}
+            </p>
           </div>
         </div>
-
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-success-soft text-success border border-success/20">
-          RESERVED & LOCKED
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-primary bg-primary-soft border border-primary/20 rounded-full px-2 py-0.5 shrink-0">
+          <Lock className="w-3 h-3" aria-hidden /> Reserved
         </span>
       </div>
-
-      <div className="my-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="p-3 rounded-lg bg-surface-muted border border-border">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
-            Assigned Bed Identifier
-          </span>
-          <span className="text-lg font-bold text-text tabular-nums">{bedLabel}</span>
-          <span className="text-xs text-text-muted block mt-0.5">
-            Locked exclusively for incoming patient
-          </span>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-caption uppercase text-text-subtle">Held until {formatClock(reservation.expiresAt)}</p>
+          <CountdownTimer expiresAt={reservation.expiresAt} offsetMs={offsetMs} size={compact ? 'md' : 'lg'} tone="text-primary" />
         </div>
-
-        <div className="p-3 rounded-lg bg-surface-muted border border-border">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
-            Guaranteed Hold Expiry
-          </span>
-          <div className="flex items-center gap-2 mt-0.5">
-            <Clock className="w-4 h-4 text-warning" />
-            <CountdownTimer expiresAt={holdUntil} size="md" />
-          </div>
-          <span className="text-[11px] text-text-subtle block mt-0.5">
-            Auto-releases if patient does not arrive
-          </span>
-        </div>
+        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
+    </article>
+  );
+}
 
-      {/* Role-specific Actions */}
-      <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
-        {onRelease && (
-          <Button
-            variant="danger"
-            size="sm"
-            icon={Ban}
-            isLoading={isReleasing}
-            onClick={() => onRelease(reservation._id)}
-          >
-            Release Bed Hold
-          </Button>
-        )}
-
-        {onMarkArrived && (
-          <Button
-            variant="success"
-            size="sm"
-            icon={UserCheck}
-            isLoading={isArriving}
-            onClick={() => onMarkArrived(reservation._id)}
-          >
-            Mark Patient Arrived
-          </Button>
-        )}
-      </div>
-    </div>
+export function ReservationActions({ onArrive, onRelease, isArriving, isReleasing, size = 'md' }) {
+  return (
+    <>
+      {onRelease && (
+        <Button variant="danger" size={size} onClick={onRelease} isLoading={isReleasing} disabled={isArriving}>
+          Release
+        </Button>
+      )}
+      {onArrive && (
+        <Button variant="success" size={size} onClick={onArrive} isLoading={isArriving} disabled={isReleasing}>
+          Mark arrived
+        </Button>
+      )}
+    </>
   );
 }

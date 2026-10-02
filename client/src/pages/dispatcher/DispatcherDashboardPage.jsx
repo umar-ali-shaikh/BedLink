@@ -1,130 +1,99 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Activity, Clock, Building2, ChevronRight, Siren, CheckCircle2 } from 'lucide-react';
-import { Button } from '../../components/Button';
-import { StatusIndicator } from '../../components/StatusIndicator';
+import React, { useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
+import { PageHeader } from '../../components/PageHeader';
+import { Card, CardHeader } from '../../components/Card';
+import { Skeleton } from '../../components/Skeleton';
+import { ErrorState } from '../../components/ErrorState';
+import { KpiRow } from '../../features/analytics/KpiRow';
+import { HospitalsTable } from '../../features/hospitals/HospitalsTable';
 import { BedCounters } from '../../features/beds/BedCounters';
+import { EmergenciesTable } from '../../features/dispatcher/EmergenciesTable';
+import { useOpsRealtime } from '../../features/dispatcher/useOpsRealtime';
+import { emergencyApi } from '../../features/dispatcher/api';
+import { hospitalsApi } from '../../features/hospitals/api';
+import { qk } from '../../services/queryKeys';
+import { errorMessage } from '../../services/api';
+import { ACTIVE_EMERGENCY_STATUSES } from '../../constants/emergency';
+import { ROLES } from '../../constants/roles';
 import { ROUTES } from '../../constants/routes';
-
-const mockEmergencies = [
-  {
-    _id: 'em-101',
-    demoPatientId: 'DEMO-P-0042',
-    status: 'AWAITING_HOSPITAL',
-    department: 'ICU Bed',
-    urgency: 'CRITICAL',
-    contactedHospital: 'Apex City Hospital',
-    timeElapsed: '01:14',
-    createdAt: new Date(Date.now() - 74000).toISOString(),
-  },
-  {
-    _id: 'em-102',
-    demoPatientId: 'DEMO-P-0039',
-    status: 'RESERVED',
-    department: 'Cardiac ICU',
-    urgency: 'HIGH',
-    contactedHospital: 'Metro Heart Institute',
-    timeElapsed: 'Bed Locked',
-    createdAt: new Date(Date.now() - 320000).toISOString(),
-  },
-  {
-    _id: 'em-103',
-    demoPatientId: 'DEMO-P-0035',
-    status: 'COMPLETED',
-    department: 'Burns Unit',
-    urgency: 'MODERATE',
-    contactedHospital: 'St. Jude Memorial Hospital',
-    timeElapsed: 'Arrived',
-    createdAt: new Date(Date.now() - 1400000).toISOString(),
-  },
-];
+import { SUMMARY_RESOURCES } from '../../constants/bed';
 
 export function DispatcherDashboardPage() {
   const navigate = useNavigate();
-  const [emergencies] = useState(mockEmergencies);
+  useOpsRealtime();
+  const hospitals = useQuery({ queryKey: qk.hospitals, queryFn: () => hospitalsApi.list() });
+  const emergencies = useQuery({ queryKey: qk.emergencies('mine'), queryFn: () => emergencyApi.list() });
+
+  const hospitalNames = useMemo(() => Object.fromEntries((hospitals.data ?? []).map((h) => [h.id, h.name])), [hospitals.data]);
+  const all = emergencies.data ?? [];
+  const active = all.filter((e) => ACTIVE_EMERGENCY_STATUSES.includes(e.status));
+  const recent = all.filter((e) => !ACTIVE_EMERGENCY_STATUSES.includes(e.status)).slice(0, 6);
+
+  const citySummary = useMemo(() => {
+    const totals = Object.fromEntries(SUMMARY_RESOURCES.map((r) => [r.key, 0]));
+    (hospitals.data ?? [])
+      .filter((h) => h.status === 'ACTIVE')
+      .forEach((h) => SUMMARY_RESOURCES.forEach((r) => (totals[r.key] += h.bedSummary?.available?.[r.key] ?? 0)));
+    return totals;
+  }, [hospitals.data]);
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-text tracking-tight">Dispatcher Operations Console</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Real-time ambulance intake, bed reservation tracking, and regional availability
-          </p>
-        </div>
+    <>
+      <PageHeader
+        title="Overview"
+        subtitle="Today · Mumbai region"
+        actions={
+          <Link to={ROUTES.DISPATCHER_NEW_EMERGENCY} className="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-primary text-text-inverse text-small font-semibold hover:bg-primary-hover">
+            <Plus className="w-4 h-4" aria-hidden /> New emergency
+          </Link>
+        }
+      />
+      <div className="space-y-5">
+        <KpiRow />
 
-        <Button
-          size="lg"
-          icon={PlusCircle}
-          onClick={() => navigate(ROUTES.DISPATCHER_NEW_EMERGENCY)}
-          className="shadow-sm"
-        >
-          New Emergency Request →
-        </Button>
-      </div>
-
-      {/* Regional Live Bed Availability Counters */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-text uppercase tracking-wider">
-            City-Wide Real-time Bed Availability
-          </h2>
-          <span className="text-xs text-success font-semibold flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            Live sync active
-          </span>
-        </div>
-        <BedCounters counts={{ icu: 14, ventilator: 19, oxygen: 38, cardiac: 7, burns: 3 }} />
-      </div>
-
-      {/* Active Emergencies Table / Cards */}
-      <div className="bg-surface border border-border rounded-xl shadow-card overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-primary" />
-            <h3 className="text-base font-bold text-text">Active Emergency Requests</h3>
-          </div>
-          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary-soft text-primary">
-            {emergencies.length} Total Today
-          </span>
-        </div>
-
-        <div className="divide-y divide-border">
-          {emergencies.map((em) => (
-            <div
-              key={em._id}
-              onClick={() => navigate(ROUTES.DISPATCHER_EMERGENCY_DETAIL.replace(':id', em._id))}
-              className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-muted transition-colors cursor-pointer"
-            >
-              <div className="flex items-start sm:items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-neutral-soft flex items-center justify-center text-primary flex-shrink-0">
-                  <Siren className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-text font-mono">{em.demoPatientId}</span>
-                    <StatusIndicator status={em.status} />
-                  </div>
-                  <p className="text-xs text-text-muted mt-0.5">
-                    {em.department} · Contacted: <strong className="text-text">{em.contactedHospital}</strong>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between sm:justify-end gap-4">
-                <div className="text-left sm:text-right">
-                  <span className="block text-[10px] uppercase font-semibold text-text-subtle">
-                    Window Status
-                  </span>
-                  <span className="text-xs font-bold text-text tabular-nums">{em.timeElapsed}</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-text-subtle" />
-              </div>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <Card padded={false}>
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+              <h2 className="text-[15px] font-semibold text-text">My active emergencies</h2>
+              {active.length > 0 && (
+                <span className="text-[11px] font-bold uppercase tracking-wide text-danger bg-danger-soft border border-danger/20 rounded px-2 py-0.5">{active.length} active</span>
+              )}
             </div>
-          ))}
+            {emergencies.isLoading ? (
+              <div className="p-4 space-y-3">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-10" />
+                ))}
+              </div>
+            ) : emergencies.isError ? (
+              <ErrorState className="m-4" message={errorMessage(emergencies.error)} onRetry={emergencies.refetch} />
+            ) : (
+              <EmergenciesTable
+                emergencies={active}
+                hospitalNames={hospitalNames}
+                role={ROLES.DISPATCHER}
+                emptyAction={{ actionLabel: 'New emergency', onAction: () => navigate(ROUTES.DISPATCHER_NEW_EMERGENCY) }}
+              />
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader title="Live city bed availability" subtitle="Available now across active hospitals" />
+            {hospitals.isLoading ? <Skeleton className="h-40" /> : <BedCounters available={citySummary} columns="grid-cols-2 sm:grid-cols-3" />}
+          </Card>
         </div>
+
+        <HospitalsTable query={hospitals} />
+
+        {recent.length > 0 && (
+          <Card padded={false}>
+            <h2 className="px-4 pt-4 pb-2 text-[15px] font-semibold text-text">Recently closed</h2>
+            <EmergenciesTable emergencies={recent} hospitalNames={hospitalNames} role={ROLES.DISPATCHER} />
+          </Card>
+        )}
       </div>
-    </div>
+    </>
   );
 }

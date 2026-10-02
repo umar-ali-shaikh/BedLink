@@ -1,149 +1,303 @@
-import React, { useState } from 'react';
-import { Building2, Plus, Check, FreshnessIndicator, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, Plus } from 'lucide-react';
+import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button';
-import { FreshnessIndicator as Freshness } from '../../components/FreshnessIndicator';
 import { Modal } from '../../components/Modal';
+import { StatusIndicator } from '../../components/StatusIndicator';
+import { Skeleton } from '../../components/Skeleton';
 import { useToast } from '../../components/Toast';
+import { HospitalsTable } from '../../features/hospitals/HospitalsTable';
+import { useOpsRealtime } from '../../features/dispatcher/useOpsRealtime';
+import { hospitalsApi } from '../../features/hospitals/api';
+import { bedsApi } from '../../features/beds/api';
+import { BED_TYPE_LABELS, BED_TYPE_VALUES, EQUIPMENT_LABELS, EQUIPMENT_VALUES, STAFF_BED_STATUSES } from '../../constants/bed';
+import { DEFAULT_PATIENT_LOCATION, SPECIALTY_LABELS, SPECIALTY_VALUES } from '../../constants/hospital';
+import { qk } from '../../services/queryKeys';
+import { errorMessage } from '../../services/api';
+import { equipmentText } from '../../utils/labels';
+import { cn } from '../../utils/cn';
 
-const initialHospitals = [
-  { _id: 'hosp-1', name: 'Apex City Hospital & Trauma Center', currentLoad: 52, specialties: ['CARDIOLOGY', 'TRAUMA'], availableIcu: 4, availableVents: 6, updatedAt: new Date(Date.now() - 40000).toISOString(), status: 'ACTIVE' },
-  { _id: 'hosp-2', name: 'Metro Heart & Super Specialty Institute', currentLoad: 65, specialties: ['CARDIOLOGY'], availableIcu: 2, availableVents: 4, updatedAt: new Date(Date.now() - 80000).toISOString(), status: 'ACTIVE' },
-  { _id: 'hosp-3', name: 'St. Jude Memorial Hospital', currentLoad: 78, specialties: ['TRAUMA', 'GENERAL_MEDICINE'], availableIcu: 1, availableVents: 2, updatedAt: new Date(Date.now() - 360000).toISOString(), status: 'ACTIVE' },
-  { _id: 'hosp-4', name: 'North General Infirmary', currentLoad: 96, specialties: ['NEUROLOGY', 'GENERAL_MEDICINE'], availableIcu: 0, availableVents: 1, updatedAt: new Date(Date.now() - 700000).toISOString(), status: 'ACTIVE' },
-];
+const EMPTY = { name: '', address: '', lat: DEFAULT_PATIENT_LOCATION.lat, lng: DEFAULT_PATIENT_LOCATION.lng, specialties: [], currentLoad: 50, status: 'ACTIVE' };
 
-export function AdminHospitalsPage() {
-  const [hospitals, setHospitals] = useState(initialHospitals);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [name, setName] = useState('');
-  const [load, setLoad] = useState(50);
+function Chips({ values, labels, selected, onToggle }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {values.map((v) => {
+        const on = selected.includes(v);
+        return (
+          <button key={v} type="button" aria-pressed={on} onClick={() => onToggle(v)} className={cn('chip', on && 'chip-active')}>
+            {on && <Check className="w-3.5 h-3.5" aria-hidden />}
+            {labels[v]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function HospitalForm({ hospital, onDone }) {
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const [form, setForm] = useState(EMPTY);
+  const [error, setError] = useState('');
 
-  const handleAddHospital = (e) => {
+  useEffect(() => {
+    setError('');
+    setForm(
+      hospital
+        ? { name: hospital.name, address: hospital.address ?? '', lat: hospital.coordinates?.lat, lng: hospital.coordinates?.lng, specialties: hospital.specialties ?? [], currentLoad: hospital.currentLoad, status: hospital.status }
+        : EMPTY
+    );
+  }, [hospital]);
+
+  const save = useMutation({
+    mutationFn: () => {
+      const body = {
+        name: form.name.trim(),
+        address: form.address.trim(),
+        coordinates: { lat: Number(form.lat), lng: Number(form.lng) },
+        specialties: form.specialties,
+        currentLoad: Number(form.currentLoad),
+        status: form.status,
+      };
+      return hospital ? hospitalsApi.update(hospital.id, body) : hospitalsApi.create(body);
+    },
+    onSuccess: (saved) => {
+      queryClient.invalidateQueries({ queryKey: qk.hospitals });
+      showToast({ type: 'success', title: hospital ? 'Hospital updated' : 'Hospital created' });
+      onDone(saved);
+    },
+    onError: (err) => setError(errorMessage(err)),
+  });
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const submit = (e) => {
     e.preventDefault();
-    if (!name) return;
-
-    const newHosp = {
-      _id: 'hosp-' + Date.now(),
-      name,
-      currentLoad: Number(load),
-      specialties: ['GENERAL_MEDICINE'],
-      availableIcu: 2,
-      availableVents: 2,
-      updatedAt: new Date().toISOString(),
-      status: 'ACTIVE',
-    };
-
-    setHospitals((prev) => [...prev, newHosp]);
-    setShowAddModal(false);
-    setName('');
-    showToast({
-      title: 'Hospital Registered',
-      message: `${name} has been enrolled in the BedLink regional registry.`,
-      type: 'success',
-    });
+    if (form.name.trim().length < 2) return setError('Name must be at least 2 characters.');
+    if (!Number.isFinite(Number(form.lat)) || !Number.isFinite(Number(form.lng)) || form.lat === '' || form.lng === '') return setError('Enter valid coordinates.');
+    return save.mutate();
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <form onSubmit={submit} className="space-y-4" noValidate>
+      <div>
+        <label className="label" htmlFor="h-name">
+          Name
+        </label>
+        <input id="h-name" className="input" value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Fictional hospital name" />
+      </div>
+      <div>
+        <label className="label" htmlFor="h-address">
+          Address
+        </label>
+        <input id="h-address" className="input" value={form.address} onChange={(e) => set({ address: e.target.value })} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text tracking-tight">Hospital Network Registry</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Manage regional healthcare facilities, ward quotas, and verification freshness
-          </p>
+          <label className="label" htmlFor="h-lat">
+            Latitude
+          </label>
+          <input id="h-lat" inputMode="decimal" className="input tabular-nums" value={form.lat} onChange={(e) => set({ lat: e.target.value })} />
         </div>
+        <div>
+          <label className="label" htmlFor="h-lng">
+            Longitude
+          </label>
+          <input id="h-lng" inputMode="decimal" className="input tabular-nums" value={form.lng} onChange={(e) => set({ lng: e.target.value })} />
+        </div>
+      </div>
+      <div>
+        <span className="label">Specialties</span>
+        <Chips
+          values={SPECIALTY_VALUES}
+          labels={SPECIALTY_LABELS}
+          selected={form.specialties}
+          onToggle={(v) => set({ specialties: form.specialties.includes(v) ? form.specialties.filter((s) => s !== v) : [...form.specialties, v] })}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label" htmlFor="h-load">
+            Load: <span className="tabular-nums">{form.currentLoad}%</span>
+          </label>
+          <input id="h-load" type="range" min="0" max="100" step="5" value={form.currentLoad} onChange={(e) => set({ currentLoad: e.target.value })} className="w-full accent-primary h-10" />
+        </div>
+        <div>
+          <label className="label" htmlFor="h-status">
+            Status
+          </label>
+          <select id="h-status" className="input" value={form.status} onChange={(e) => set({ status: e.target.value })}>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+        </div>
+      </div>
+      {error && (
+        <p className="text-small text-danger bg-danger-soft rounded-md px-3 py-2" role="alert">
+          {error}
+        </p>
+      )}
+      <Button type="submit" isLoading={save.isPending} className="w-full">
+        {hospital ? 'Save changes' : 'Create hospital'}
+      </Button>
+    </form>
+  );
+}
 
-        <Button icon={Plus} onClick={() => setShowAddModal(true)}>
-          Register Hospital
+function BedInventory({ hospitalId }) {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const beds = useQuery({ queryKey: qk.beds(hospitalId), queryFn: () => bedsApi.list(hospitalId) });
+  const [draft, setDraft] = useState({ label: '', type: 'ICU', equipment: [], status: 'AVAILABLE' });
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: qk.beds(hospitalId) });
+    queryClient.invalidateQueries({ queryKey: qk.hospitals });
+  };
+  const add = useMutation({
+    mutationFn: () => bedsApi.create(hospitalId, { ...draft, label: draft.label.trim() }),
+    onSuccess: () => {
+      refresh();
+      showToast({ type: 'success', title: `Bed ${draft.label} added` });
+      setDraft((d) => ({ ...d, label: '' }));
+    },
+    onError: (err) => showToast({ type: 'error', title: 'Bed not added', message: errorMessage(err) }),
+  });
+  const setStatus = useMutation({
+    mutationFn: ({ id, status }) => bedsApi.updateStatus(id, status),
+    onSuccess: refresh,
+    onError: (err) => showToast({ type: 'error', title: 'Status not saved', message: errorMessage(err) }),
+  });
+
+  return (
+    <div className="space-y-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (draft.label.trim()) add.mutate();
+        }}
+        className="rounded-md border border-border p-3 space-y-3 bg-surface-muted"
+      >
+        <p className="text-small font-semibold text-text">Add bed</p>
+        <div className="grid grid-cols-2 gap-2">
+          <input className="input" placeholder="Label e.g. ICU-07" value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} aria-label="Bed label" />
+          <select className="input" value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })} aria-label="Bed type">
+            {BED_TYPE_VALUES.map((t) => (
+              <option key={t} value={t}>
+                {BED_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Chips
+          values={EQUIPMENT_VALUES}
+          labels={EQUIPMENT_LABELS}
+          selected={draft.equipment}
+          onToggle={(v) => setDraft({ ...draft, equipment: draft.equipment.includes(v) ? draft.equipment.filter((x) => x !== v) : [...draft.equipment, v] })}
+        />
+        <Button type="submit" size="sm" icon={Plus} isLoading={add.isPending} disabled={!draft.label.trim()}>
+          Add bed
         </Button>
-      </div>
+      </form>
 
-      <div className="bg-surface border border-border rounded-xl shadow-card overflow-hidden">
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-bold text-text">Participating Facilities</h3>
-          </div>
-          <span className="text-xs text-text-subtle font-semibold">{hospitals.length} Active Centers</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface-muted text-text-subtle uppercase tracking-wider font-semibold border-b border-border">
-              <tr>
-                <th className="p-3.5">Hospital Name</th>
-                <th className="p-3.5">Load Level</th>
-                <th className="p-3.5">Specialties</th>
-                <th className="p-3.5">Available ICU</th>
-                <th className="p-3.5">Ventilators</th>
-                <th className="p-3.5">Freshness</th>
-                <th className="p-3.5 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {hospitals.map((h) => (
-                <tr key={h._id} className="hover:bg-surface-muted/50 transition-colors">
-                  <td className="p-3.5 font-bold text-text">{h.name}</td>
-                  <td className="p-3.5">
-                    <span className={`px-2 py-0.5 rounded font-bold ${h.currentLoad >= 90 ? 'bg-danger-soft text-danger' : h.currentLoad >= 70 ? 'bg-warning-soft text-warning' : 'bg-success-soft text-success'}`}>
-                      {h.currentLoad}% Load
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-text-muted">{h.specialties.join(', ')}</td>
-                  <td className="p-3.5 font-bold text-text tabular-nums">{h.availableIcu} open</td>
-                  <td className="p-3.5 font-bold text-text tabular-nums">{h.availableVents} open</td>
-                  <td className="p-3.5"><Freshness timestamp={h.updatedAt} /></td>
-                  <td className="p-3.5 text-right">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-soft text-success border border-success/20">
-                      {h.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Register Hospital Facility">
-        <form onSubmit={handleAddHospital} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
-              Hospital Legal Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. City Central Medical Institute"
-              className="w-full h-10 px-3 border border-border rounded-md text-sm text-text focus:outline-none focus:ring-2 focus:ring-focus"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
-              Initial Operational Load (%)
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={load}
-              onChange={(e) => setLoad(e.target.value)}
-              className="w-full h-10 px-3 border border-border rounded-md text-sm text-text focus:outline-none focus:ring-2 focus:ring-focus"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
-            <Button variant="secondary" onClick={() => setShowAddModal(false)}>
-              Cancel
-            </Button>
-            <Button type="submit">Enroll Facility</Button>
-          </div>
-        </form>
-      </Modal>
+      {beds.isLoading ? (
+        <Skeleton className="h-32" />
+      ) : (
+        <ul className="divide-y divide-border border border-border rounded-md">
+          {(beds.data ?? []).map((b) => (
+            <li key={b.id} className="px-3 py-2.5 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-small font-semibold text-text">
+                  {b.label} <span className="font-normal text-text-subtle">· {BED_TYPE_LABELS[b.type]}</span>
+                </p>
+                <p className="text-[12px] text-text-subtle truncate">{equipmentText(b.equipment)}</p>
+              </div>
+              {b.status === 'RESERVED' ? (
+                <StatusIndicator kind="bed" status="RESERVED" look="caps" />
+              ) : (
+                <select
+                  className="input h-9 w-36"
+                  value={b.status}
+                  onChange={(e) => setStatus.mutate({ id: b.id, status: e.target.value })}
+                  aria-label={`Status of ${b.label}`}
+                >
+                  {STAFF_BED_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s.charAt(0) + s.slice(1).toLowerCase()}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </li>
+          ))}
+          {beds.data?.length === 0 && <li className="px-3 py-4 text-small text-text-subtle">No beds yet.</li>}
+        </ul>
+      )}
     </div>
+  );
+}
+
+export function AdminHospitalsPage() {
+  useOpsRealtime();
+  const [params, setParams] = useSearchParams();
+  const hospitals = useQuery({ queryKey: qk.hospitals, queryFn: () => hospitalsApi.list() });
+  const [creating, setCreating] = useState(false);
+  const [tab, setTab] = useState('details');
+  const editId = params.get('id');
+  const editing = hospitals.data?.find((h) => h.id === editId) ?? null;
+  const open = creating || !!editing;
+
+  const close = () => {
+    setCreating(false);
+    setTab('details');
+    if (editId) setParams({}, { replace: true });
+  };
+
+  return (
+    <>
+      <PageHeader
+        title="Hospitals"
+        subtitle="Inventory, load and availability"
+        actions={
+          <Button icon={Plus} onClick={() => setCreating(true)}>
+            Add hospital
+          </Button>
+        }
+      />
+      <HospitalsTable query={hospitals} title="All hospitals" onRowClick={(h) => setParams({ id: h.id })} />
+
+      <Modal isOpen={open} onClose={close} variant="drawer" title={editing ? editing.name : 'New hospital'} description={editing ? 'Edit details or manage beds' : 'Simulated data only — use a fictional name.'}>
+        {editing && (
+          <div className="flex gap-1 mb-4 border-b border-border -mt-1" role="tablist">
+            {['details', 'beds'].map((t) => (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                className={cn('h-10 px-3 text-small font-semibold capitalize border-b-2 -mb-px', tab === t ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-text')}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+        {editing && tab === 'beds' ? (
+          <BedInventory hospitalId={editing.id} />
+        ) : (
+          <HospitalForm
+            hospital={editing}
+            onDone={(saved) => {
+              if (!editing && saved?.id) {
+                setCreating(false);
+                setParams({ id: saved.id });
+                setTab('beds');
+              }
+            }}
+          />
+        )}
+      </Modal>
+    </>
   );
 }

@@ -20,7 +20,7 @@ export function ErrorState({
         <AlertTriangle className="w-6 h-6" />
       </div>
       <h4 className="text-base font-semibold text-danger">{title}</h4>
-      <p className="text-xs text-text-muted mt-1 max-w-sm">{message}</p>
+      <p className="text-small text-text-muted mt-1 max-w-sm">{message}</p>
       {onRetry && (
         <Button
           variant="secondary"

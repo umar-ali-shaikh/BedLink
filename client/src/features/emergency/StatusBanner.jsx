@@ -1,72 +1,51 @@
 import React from 'react';
-import { Siren, Clock, CheckCircle2, XCircle, Building2, Ban } from 'lucide-react';
-import { StatusIndicator } from '../../components/StatusIndicator';
+import { CircleAlert, CircleCheckBig, Clock, Lock, Search, Ban } from 'lucide-react';
 import { CountdownTimer } from '../../components/CountdownTimer';
-import { Button } from '../../components/Button';
+import { formatClock } from '../../utils/formatRelative';
 import { cn } from '../../utils/cn';
 
-export function StatusBanner({ emergency, activeOffer, onCancel, isCancelling = false, className }) {
-  if (!emergency) return null;
+const LOOK = {
+  SEARCHING: { icon: Search, cls: 'bg-primary-soft border-primary/30 text-primary', title: 'Finding hospital' },
+  AWAITING_HOSPITAL: { icon: Clock, cls: 'bg-primary-soft border-primary/30 text-primary', title: 'Awaiting hospital' },
+  RESERVED: { icon: Lock, cls: 'bg-success-soft border-success/30 text-success', title: 'Bed reserved' },
+  COMPLETED: { icon: CircleCheckBig, cls: 'bg-success-soft border-success/30 text-success', title: 'Patient arrived' },
+  NO_MATCH: { icon: CircleAlert, cls: 'bg-danger-soft border-danger/30 text-danger', title: 'No hospital available' },
+  CANCELLED: { icon: Ban, cls: 'bg-neutral-soft border-border text-neutral-state', title: 'Cancelled' },
+};
+
+/** Status line → hospital → giant countdown (DESIGN.md §8.2 detail, §8.4). */
+export function StatusBanner({ emergency, hospitalName, offsetMs, offerWindowSeconds = 120 }) {
+  const look = LOOK[emergency.status] ?? LOOK.SEARCHING;
+  const Icon = look.icon;
+  const offer = emergency.currentOffer;
+  const reservation = emergency.reservation;
+
+  let detail = null;
+  if (emergency.status === 'AWAITING_HOSPITAL') detail = `Waiting for ${hospitalName ?? 'the hospital'} to respond`;
+  else if (emergency.status === 'RESERVED' && reservation)
+    detail = `${hospitalName ?? 'Hospital'} accepted. Bed ${reservation.bed?.label ?? ''} is held until ${formatClock(reservation.expiresAt)}.`;
+  else if (emergency.status === 'SEARCHING') detail = 'Re-ranking with the latest availability…';
+  else if (emergency.status === 'NO_MATCH') detail = 'No hospital currently matches all requirements. Adjust requirements or retry.';
+  else if (emergency.status === 'COMPLETED') detail = `Patient arrived at ${hospitalName ?? 'the hospital'}.`;
+  else if (emergency.status === 'CANCELLED') detail = 'This emergency was cancelled.';
 
   return (
-    <div className={cn('bg-surface border border-border rounded-xl p-5 shadow-card space-y-4', className)}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary-soft flex items-center justify-center text-primary">
-            <Siren className="w-5 h-5 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-text">
-                Emergency {emergency.demoPatientId || 'DEMO-P-0000'}
-              </h2>
-              <StatusIndicator status={emergency.status} />
-            </div>
-            <p className="text-xs text-text-muted mt-0.5">
-              Urgency: <span className="font-semibold text-text">{emergency.requirements?.urgency || 'CRITICAL'}</span> · Department: <span className="font-semibold text-text">{emergency.requirements?.bedType || 'ICU'}</span>
-            </p>
-          </div>
+    <section className={cn('rounded-lg border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4', look.cls)} aria-live="polite">
+      <div className="flex items-start gap-3 flex-1 min-w-0">
+        <span className="w-11 h-11 rounded-full bg-surface flex items-center justify-center shrink-0 shadow-card">
+          <Icon className="w-5 h-5" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="text-h2">{look.title}</p>
+          {detail && <p className="text-body text-text mt-0.5">{detail}</p>}
         </div>
-
-        {onCancel && emergency.status !== 'COMPLETED' && emergency.status !== 'CANCELLED' && (
-          <Button
-            variant="danger"
-            size="sm"
-            icon={Ban}
-            isLoading={isCancelling}
-            onClick={onCancel}
-          >
-            Cancel Request
-          </Button>
-        )}
       </div>
-
-      {/* Active Hospital Handshake Offer Banner */}
-      {activeOffer && activeOffer.status === 'PENDING' && (
-        <div className="p-4 rounded-xl bg-primary-soft/40 border border-primary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Building2 className="w-6 h-6 text-primary flex-shrink-0" />
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                Awaiting Hospital Handshake Response
-              </p>
-              <h4 className="text-sm font-bold text-text">
-                {activeOffer.hospital?.name || 'Contacted Hospital'}
-              </h4>
-              <p className="text-xs text-text-muted">
-                Contacted for bed allocation · 2-minute response window
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center sm:items-end">
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-text-subtle mb-0.5">
-              Time Remaining
-            </span>
-            <CountdownTimer expiresAt={activeOffer.expiresAt} size="md" showIcon />
-          </div>
+      {emergency.status === 'AWAITING_HOSPITAL' && offer?.expiresAt && (
+        <div className="sm:text-right sm:min-w-[160px]">
+          <p className="text-caption uppercase text-text-muted">Time to respond</p>
+          <CountdownTimer expiresAt={offer.expiresAt} offsetMs={offsetMs} totalSeconds={offerWindowSeconds} showBar className="w-full" />
         </div>
       )}
-    </div>
+    </section>
   );
 }

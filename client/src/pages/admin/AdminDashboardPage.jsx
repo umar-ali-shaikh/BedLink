@@ -1,114 +1,112 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Download } from 'lucide-react';
+import { PageHeader } from '../../components/PageHeader';
+import { Card } from '../../components/Card';
+import { Button } from '../../components/Button';
+import { Skeleton } from '../../components/Skeleton';
 import { KpiRow } from '../../features/analytics/KpiRow';
 import { ResponseChart } from '../../features/analytics/ResponseChart';
-import { StatusIndicator } from '../../components/StatusIndicator';
+import { HospitalsTable } from '../../features/hospitals/HospitalsTable';
+import { hospitalHealth } from '../../features/hospitals/health';
+import { EmergenciesTable } from '../../features/dispatcher/EmergenciesTable';
+import { useOpsRealtime } from '../../features/dispatcher/useOpsRealtime';
+import { emergencyApi } from '../../features/dispatcher/api';
+import { hospitalsApi } from '../../features/hospitals/api';
+import { hospitalRequestsApi } from '../../features/hospital/api';
+import { useNow } from '../../hooks/useNow';
+import { qk } from '../../services/queryKeys';
+import { ACTIVE_EMERGENCY_STATUSES } from '../../constants/emergency';
+import { ROLES } from '../../constants/roles';
+import { ROUTES } from '../../constants/routes';
+import { freshnessOf } from '../../utils/formatRelative';
 
-const recentEmergencies = [
-  { id: 'EM-901', patient: 'DEMO-P-0042', status: 'RESERVED', hospital: 'Apex City Hospital', bed: 'ICU-04', eta: '8m', time: '3m ago' },
-  { id: 'EM-902', patient: 'DEMO-P-0041', status: 'COMPLETED', hospital: 'Metro Heart Institute', bed: 'CARD-01', eta: 'Arrived', time: '18m ago' },
-  { id: 'EM-903', patient: 'DEMO-P-0040', status: 'COMPLETED', hospital: 'St. Jude Memorial Hospital', bed: 'ICU-01', eta: 'Arrived', time: '32m ago' },
-  { id: 'EM-904', patient: 'DEMO-P-0039', status: 'NO_MATCH', hospital: '—', bed: '—', eta: '—', time: '1h ago' },
-];
+export function exportHospitalsCsv(hospitals) {
+  const header = ['Name', 'Address', 'Status', 'Load %', 'ICU free', 'Ventilators free', 'Oxygen free', 'Cardiac free', 'Burns free', 'Last update'];
+  const rows = hospitals.map((h) => [
+    h.name,
+    h.address ?? '',
+    hospitalHealth(h),
+    h.currentLoad,
+    ...['ICU', 'VENTILATOR', 'OXYGEN', 'CARDIAC', 'BURNS'].map((k) => h.bedSummary?.available?.[k] ?? 0),
+    h.bedSummary?.lastUpdatedAt ?? '',
+  ]);
+  const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: `bedlink-hospitals-${new Date().toISOString().slice(0, 10)}.csv` });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function SyncPill({ hospitals }) {
+  const now = useNow(1000);
+  const active = hospitals.filter((h) => h.status === 'ACTIVE');
+  const fresh = active.filter((h) => freshnessOf(h.bedSummary?.lastUpdatedAt, now) !== 'STALE').length;
+  const pct = active.length ? Math.round((fresh / active.length) * 100) : 100;
+  const ok = pct >= 80;
+  return (
+    <span className="inline-flex items-center gap-2 h-9 px-3 rounded-md border border-border bg-surface text-small">
+      <span className={`w-2 h-2 rounded-full ${ok ? 'bg-success' : 'bg-warning'}`} aria-hidden />
+      <span className="text-text-muted">
+        Data sync: <span className="font-semibold text-text tabular-nums">{pct}%</span> · {ok ? 'Operational' : 'Degraded'}
+      </span>
+      <span className="h-4 w-px bg-border" aria-hidden />
+      <time className="font-semibold text-text tabular-nums">{new Date(now).toLocaleTimeString([], { hour12: false })}</time>
+    </span>
+  );
+}
 
 export function AdminDashboardPage() {
+  const navigate = useNavigate();
+  useOpsRealtime();
+  const hospitals = useQuery({ queryKey: qk.hospitals, queryFn: () => hospitalsApi.list() });
+  const emergencies = useQuery({ queryKey: qk.emergencies(ACTIVE_EMERGENCY_STATUSES.join(',')), queryFn: () => emergencyApi.list(ACTIVE_EMERGENCY_STATUSES) });
+  const requests = useQuery({ queryKey: qk.hospitalRequests('all'), queryFn: async () => ({ ...(await hospitalRequestsApi.list()), fetchedAt: Date.now() }) });
+
+  const hospitalNames = useMemo(() => Object.fromEntries((hospitals.data ?? []).map((h) => [h.id, h.name])), [hospitals.data]);
+  const live = emergencies.data ?? [];
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text tracking-tight">System Performance & Operations</h1>
-        <p className="text-xs text-text-muted mt-0.5">
-          Macro metrics, hospital response latency, and live coordination statistics
-        </p>
-      </div>
+    <>
+      <PageHeader
+        title="Overview"
+        subtitle="Today · Mumbai region"
+        actions={
+          <>
+            <SyncPill hospitals={hospitals.data ?? []} />
+            <Button variant="secondary" icon={Download} onClick={() => exportHospitalsCsv(hospitals.data ?? [])} disabled={!hospitals.data?.length}>
+              Export CSV
+            </Button>
+          </>
+        }
+      />
+      <div className="space-y-5">
+        <KpiRow />
 
-      {/* KPI Summary Row */}
-      <KpiRow />
-
-      {/* Charts & Graphs Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8">
-          <ResponseChart />
-        </div>
-
-        <div className="lg:col-span-4 bg-surface border border-border rounded-xl p-5 shadow-card flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-text mb-1">Handshake SLA Compliance</h3>
-            <p className="text-xs text-text-muted mb-4">Target: Handshake response &lt; 120s</p>
-
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-semibold text-text">Under 60 seconds (Immediate)</span>
-                  <span className="font-bold text-success">74%</span>
-                </div>
-                <div className="w-full h-2 bg-neutral-soft rounded-full overflow-hidden">
-                  <div className="h-full bg-success rounded-full" style={{ width: '74%' }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-semibold text-text">60 - 120 seconds (Within SLA)</span>
-                  <span className="font-bold text-primary">18%</span>
-                </div>
-                <div className="w-full h-2 bg-neutral-soft rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: '18%' }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-semibold text-text">Timed Out / Automatic Fallback</span>
-                  <span className="font-bold text-warning">8%</span>
-                </div>
-                <div className="w-full h-2 bg-neutral-soft rounded-full overflow-hidden">
-                  <div className="h-full bg-warning rounded-full" style={{ width: '8%' }} />
-                </div>
-              </div>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+          <ResponseChart requests={requests.data?.requests} isLoading={requests.isLoading} />
+          <Card padded={false} className="flex flex-col">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <h2 className="text-[15px] font-semibold text-text">Live emergencies</h2>
+              <span className="text-[11px] font-bold uppercase tracking-wide text-danger bg-danger-soft border border-danger/20 rounded px-2 py-0.5">{live.length} active</span>
             </div>
-          </div>
-
-          <div className="p-3 bg-surface-muted rounded-lg border border-border mt-4 text-[11px] text-text-subtle">
-            ⚡ Automatic fallback reroutes expired handshakes within 10 seconds of timeout.
-          </div>
+            {emergencies.isLoading ? (
+              <div className="p-4 space-y-3">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-9" />
+                ))}
+              </div>
+            ) : (
+              <div className="max-h-[300px] overflow-y-auto">
+                <EmergenciesTable emergencies={live} hospitalNames={hospitalNames} role={ROLES.ADMIN} compact />
+              </div>
+            )}
+          </Card>
         </div>
+
+        <HospitalsTable query={hospitals} onRowClick={(h) => navigate(`${ROUTES.ADMIN_HOSPITALS}?id=${h.id}`)} />
       </div>
-
-      {/* Live System Activity Table */}
-      <div className="bg-surface border border-border rounded-xl shadow-card overflow-hidden">
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-bold text-text">Recent Emergency Dispatches</h3>
-          <span className="text-xs font-semibold text-text-subtle">City Control Network</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface-muted text-text-subtle uppercase tracking-wider font-semibold border-b border-border">
-              <tr>
-                <th className="p-3.5">Dispatch Ref</th>
-                <th className="p-3.5">Patient</th>
-                <th className="p-3.5">Status</th>
-                <th className="p-3.5">Hospital</th>
-                <th className="p-3.5">Assigned Bed</th>
-                <th className="p-3.5">ETA</th>
-                <th className="p-3.5 text-right">Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {recentEmergencies.map((em) => (
-                <tr key={em.id} className="hover:bg-surface-muted/50 transition-colors">
-                  <td className="p-3.5 font-mono font-bold text-text">{em.id}</td>
-                  <td className="p-3.5 font-mono text-text-muted">{em.patient}</td>
-                  <td className="p-3.5"><StatusIndicator status={em.status} /></td>
-                  <td className="p-3.5 font-medium text-text">{em.hospital}</td>
-                  <td className="p-3.5 font-mono text-text-muted">{em.bed}</td>
-                  <td className="p-3.5 text-text-muted">{em.eta}</td>
-                  <td className="p-3.5 text-right text-text-subtle">{em.time}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

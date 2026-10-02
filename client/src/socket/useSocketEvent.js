@@ -1,15 +1,32 @@
-import { useEffect } from 'react';
-import { useSocket } from './SocketContext';
+import { useEffect, useRef } from 'react';
+import { socket } from './index';
 
+/** Subscribe to a server event; the latest handler is always used (no resubscribe churn). */
 export function useSocketEvent(event, handler) {
-  const { socket } = useSocket();
+  const ref = useRef(handler);
+  ref.current = handler;
 
   useEffect(() => {
-    if (!socket || !event || !handler) return;
+    if (!event) return undefined;
+    const listener = (payload) => ref.current?.(payload);
+    socket.on(event, listener);
+    return () => socket.off(event, listener);
+  }, [event]);
+}
 
-    socket.on(event, handler);
-    return () => {
-      socket.off(event, handler);
-    };
-  }, [socket, event, handler]);
+/** Subscribe several events to one handler: handler(eventName, payload). */
+export function useSocketEvents(events, handler) {
+  const ref = useRef(handler);
+  ref.current = handler;
+  const key = events.join('|');
+
+  useEffect(() => {
+    const listeners = events.map((event) => {
+      const listener = (payload) => ref.current?.(event, payload);
+      socket.on(event, listener);
+      return [event, listener];
+    });
+    return () => listeners.forEach(([event, listener]) => socket.off(event, listener));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 }

@@ -1,134 +1,125 @@
-import React, { useState } from 'react';
-import { CheckCircle2, XCircle, Navigation, Siren, BedDouble, Wind, Stethoscope } from 'lucide-react';
-import { CountdownTimer } from '../../components/CountdownTimer';
-import { Button } from '../../components/Button';
+import React, { useEffect, useRef, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Ambulance, Check, CircleCheck, CircleX } from 'lucide-react';
+import { hospitalRequestsApi } from './api';
+import { reservationsApi } from '../reservations/api';
 import { RejectReasonModal } from './RejectReasonModal';
-import { formatDistance, formatEta } from '../../utils/formatEta';
+import { Button } from '../../components/Button';
+import { CountdownTimer } from '../../components/CountdownTimer';
+import { useToast } from '../../components/Toast';
+import { useSocket } from '../../socket/SocketContext';
+import { qk } from '../../services/queryKeys';
+import { errorMessage } from '../../services/api';
+import { requirementsText } from '../../utils/labels';
+import { formatClock } from '../../utils/formatRelative';
+import { formatDistance } from '../../utils/formatEta';
 import { cn } from '../../utils/cn';
 
-export function IncomingRequestCard({ request, onAccept, onReject, isResponding = false, className }) {
-  const [showRejectModal, setShowRejectModal] = useState(false);
+const OFFER_WINDOW_SECONDS = 120;
 
-  if (!request) return null;
+const URGENCY_BAR = { CRITICAL: 'bg-danger', HIGH: 'bg-warning', MODERATE: 'bg-neutral-state' };
 
-  const { emergency, expiresAt, _id } = request;
-  const requirements = emergency?.requirements || {};
+/**
+ * The handshake card (DESIGN.md §8.4): status line → giant countdown → requirements → ETA
+ * → Accept (green, xl, on top) and Reject (outline, ≥ 24 px below, needs a reason).
+ * After answering it shows the outcome for 3 s, then collapses.
+ */
+export function IncomingRequestCard({ request, offsetMs = 0, onAnswering, onSettled }) {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const { isConnected } = useSocket();
+  const [rejecting, setRejecting] = useState(false);
+  const [outcome, setOutcome] = useState(null);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const finish = (result) => {
+    setOutcome(result);
+    timer.current = setTimeout(() => {
+      onSettled?.();
+      queryClient.invalidateQueries({ queryKey: qk.hospitalRequestsAll });
+    }, 3000);
+    queryClient.invalidateQueries({ queryKey: qk.reservationsAll });
+    queryClient.invalidateQueries({ queryKey: ['beds'] });
+    queryClient.invalidateQueries({ queryKey: qk.hospitals });
+  };
+
+  const onError = (err) => {
+    const expired = err.code === 'OFFER_EXPIRED' || err.code === 'OFFER_ALREADY_RESOLVED';
+    showToast({
+      type: 'error',
+      title: err.code === 'BED_NOT_AVAILABLE' ? 'No matching bed is free anymore' : expired ? 'Too late' : 'Could not respond',
+      message: err.code === 'BED_NOT_AVAILABLE' ? 'The next hospital is being contacted.' : errorMessage(err),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.hospitalRequestsAll });
+    onSettled?.();
+  };
+
+  const accept = useMutation({
+    mutationFn: async () => {
+      const data = await hospitalRequestsApi.accept(request.id);
+      // The accept response carries bedId only; the reservations list has the label.
+      const active = await reservationsApi.list(['ACTIVE']).catch(() => []);
+      return active.find((r) => r.id === data?.reservation?.id) ?? data?.reservation;
+    },
+    onMutate: () => onAnswering?.(),
+    onSuccess: (reservation) =>
+      finish({ ok: true, text: `Accepted. Bed ${reservation?.bed?.label ?? ''} is held until ${formatClock(reservation?.expiresAt)}.` }),
+    onError,
+  });
+  const reject = useMutation({
+    mutationFn: (reason) => hospitalRequestsApi.reject(request.id, reason),
+    onMutate: () => onAnswering?.(),
+    onSuccess: () => {
+      setRejecting(false);
+      finish({ ok: false, text: 'Rejected. The dispatcher is contacting the next hospital.' });
+    },
+    onError: (err) => {
+      setRejecting(false);
+      onError(err);
+    },
+  });
+
+  if (outcome) {
+    const Icon = outcome.ok ? CircleCheck : CircleX;
+    return (
+      <section className={cn('rounded-lg border p-6 text-center animate-fade-in', outcome.ok ? 'bg-success-soft border-success/30 text-success' : 'bg-neutral-soft border-border text-text-muted')} role="status">
+        <Icon className="w-10 h-10 mx-auto" aria-hidden />
+        <p className="mt-3 text-h3 text-text">{outcome.text}</p>
+      </section>
+    );
+  }
+
+  const urgency = request.emergency?.urgency ?? 'HIGH';
+  const snap = request.matchSnapshot ?? {};
+  const busy = accept.isPending || reject.isPending;
 
   return (
-    <div
-      className={cn(
-        'bg-surface border-2 border-danger rounded-2xl shadow-raised p-6 md:p-8 animate-in slide-in-from-top-4 duration-200 overflow-hidden relative',
-        className
-      )}
-    >
-      {/* Top Banner */}
-      <div className="flex items-center justify-between gap-4 pb-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <span className="p-1.5 rounded-lg bg-danger-soft text-danger">
-            <Siren className="w-5 h-5 animate-pulse" />
-          </span>
-          <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-danger">
-              INCOMING EMERGENCY BED REQUEST
-            </h2>
-            <p className="text-xs text-text-muted">
-              Patient Ref: <span className="font-mono font-bold text-text">{emergency?.demoPatientId || 'DEMO-P-0000'}</span>
-            </p>
-          </div>
-        </div>
-
-        <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-danger text-text-inverse animate-pulse">
-          ACTION REQUIRED
-        </span>
-      </div>
-
-      {/* Hero Countdown Timer */}
-      <div className="my-6 text-center">
-        <p className="text-xs uppercase tracking-wider font-semibold text-text-subtle mb-1">
-          Time Remaining to Accept
+    <section className="relative overflow-hidden bg-surface border-2 border-primary rounded-lg shadow-raised animate-fade-in" aria-live="assertive" aria-label="Incoming request">
+      <div className={cn('h-1.5', URGENCY_BAR[urgency])} aria-hidden />
+      <div className="p-5 text-center">
+        <p className="text-caption uppercase tracking-wider font-bold text-text-muted">
+          Request pending · <span className={urgency === 'CRITICAL' ? 'text-danger' : urgency === 'HIGH' ? 'text-warning' : 'text-text-muted'}>{urgency}</span>
         </p>
-        <CountdownTimer expiresAt={expiresAt} size="display" />
+        <CountdownTimer expiresAt={request.expiresAt} offsetMs={offsetMs} totalSeconds={OFFER_WINDOW_SECONDS} showBar className="mt-2 w-full items-center" />
+        <p className="mt-4 text-h3 text-text">{requirementsText(request.emergency?.requirements)}</p>
+        <p className="mt-2 text-body text-text">
+          <Ambulance className="w-5 h-5 text-primary inline-block align-[-4px] mr-1.5" aria-hidden />
+          Ambulance est. <strong className="tabular-nums">{snap.etaMinutes ?? '—'} min</strong> away ({formatDistance(snap.distanceKm)})
+        </p>
+        <p className="mt-1 text-small text-text-subtle">Patient ref {request.emergency?.demoPatientId ?? '—'}</p>
       </div>
-
-      {/* Clinical Requirements summary */}
-      <div className="p-4 rounded-xl bg-surface-muted border border-border mb-6">
-        <div className="text-xs font-semibold uppercase tracking-wider text-text-subtle mb-2.5">
-          Patient Requirements
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {requirements.bedType && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-surface border border-border text-xs font-bold text-text">
-              <BedDouble className="w-4 h-4 text-primary" />
-              <span>{requirements.bedType} Bed</span>
-            </span>
-          )}
-
-          {requirements.equipment?.map((eq) => (
-            <span
-              key={eq}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-surface border border-border text-xs font-bold text-text"
-            >
-              <Wind className="w-4 h-4 text-success" />
-              <span>{eq}</span>
-            </span>
-          ))}
-
-          {requirements.specialties?.map((spec) => (
-            <span
-              key={spec}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-surface border border-border text-xs font-bold text-text"
-            >
-              <Stethoscope className="w-4 h-4 text-primary" />
-              <span>{spec}</span>
-            </span>
-          ))}
-        </div>
-
-        {/* ETA & Distance */}
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/80 text-xs font-medium text-text-muted">
-          <Navigation className="w-4 h-4 text-primary" />
-          <span>
-            Ambulance approx. <strong className="text-text">{formatEta(request.estimatedEtaMinutes)}</strong> away ({formatDistance(request.distanceKm)})
-          </span>
-        </div>
-      </div>
-
-      {/* Accept & Reject Action Hierarchy per DESIGN.md §8.4 */}
-      <div className="space-y-6">
-        <Button
-          variant="success"
-          size="xl"
-          icon={CheckCircle2}
-          isLoading={isResponding}
-          onClick={() => onAccept(_id)}
-          className="w-full text-xl shadow-raised"
-        >
-          ✓ Accept Bed Request
+      <div className="px-5 pb-5">
+        <Button variant="success" size="xl" className="w-full" icon={Check} onClick={() => accept.mutate()} isLoading={accept.isPending} disabled={busy || !isConnected}>
+          Accept
         </Button>
-
-        <div className="text-center">
-          <Button
-            variant="danger"
-            size="lg"
-            icon={XCircle}
-            disabled={isResponding}
-            onClick={() => setShowRejectModal(true)}
-            className="w-full sm:w-auto px-8"
-          >
-            Decline Request…
-          </Button>
-        </div>
+        <div className="h-6" aria-hidden />
+        <Button variant="danger" size="lg" className="w-full" onClick={() => setRejecting(true)} disabled={busy || !isConnected}>
+          Reject…
+        </Button>
+        {!isConnected && <p className="mt-3 text-small text-warning text-center">Reconnecting — answers are paused until you're back online.</p>}
       </div>
-
-      <RejectReasonModal
-        isOpen={showRejectModal}
-        onClose={() => setShowRejectModal(false)}
-        onConfirm={(payload) => {
-          setShowRejectModal(false);
-          onReject(_id, payload);
-        }}
-        isRejecting={isResponding}
-      />
-    </div>
+      <RejectReasonModal isOpen={rejecting} onClose={() => setRejecting(false)} onConfirm={(reason) => reject.mutate(reason)} isLoading={reject.isPending} />
+    </section>
   );
 }
