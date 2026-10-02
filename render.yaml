@@ -27,9 +27,6 @@ services:
         value: lax
       - key: MONGO_TRANSACTIONS
         value: 'true'
-      # Removes old sample data if any (real registrations are kept)
-      - key: PURGE_DEMO_DATA
-        value: 'true'
       - key: GEOCODER_EMAIL
         sync: false
       - key: GOOGLE_CLIENT_ID

@@ -67,12 +67,10 @@ const envSchema = z.object({
   /** Registration attempts per IP per hour. */
   REGISTER_RATE_LIMIT_PER_HOUR: positiveInt.default(10),
   /**
-   * Remove the seeded demo dataset (`@bedlink.demo` users, seeded hospitals and their data) at
-   * startup. Real registrations are never touched; safe to leave on.
+   * On every startup, remove sample data older versions loaded (`@bedlink.demo` users except the
+   * admin, the sample hospitals and their data). Real registrations are never touched.
    */
-  PURGE_DEMO_DATA: bool.default(false),
-  /** `npm run seed` wipes the database; in production it refuses unless this is true. */
-  SEED_ALLOW_PRODUCTION: bool.default(false),
+  PURGE_DEMO_DATA: bool.default(true),
 
   OFFER_TIMEOUT_SECONDS: positiveNumber.default(120),
   RESERVATION_HOLD_MINUTES: positiveNumber.default(30),

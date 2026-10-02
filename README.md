@@ -42,14 +42,12 @@ cp .env.example .env          # server/.env.example has every variable
 # set MONGO_URI and a JWT_SECRET of at least 32 characters
 cd server
 npm install
-npm run seed                  # fictional demo hospitals, beds and users (< 10 s)
 npm run dev                   # http://localhost:5000/api/health
 ```
 
 | Script | What it does |
 |---|---|
 | `npm run dev` / `npm start` | API + Socket.IO server (nodemon in dev) |
-| `npm run seed` | Wipe and load the demo dataset |
 | `npm test` | Vitest: matching unit tests + API, concurrency, timeout/fallback and socket integration tests |
 | `npm run lint` / `npm run format` | ESLint / Prettier |
 
@@ -129,22 +127,9 @@ Everything is configured by env (`server/.env.example`, `client/.env.example`). 
 Render → New → Blueprint → this repo (`render.yaml`: one service serving API + app on one URL).
 Details and the Vercel + Render option: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## Local development data
+## Data
 
-`npm run seed` (local databases only — it refuses Atlas) loads sample hospitals and these
-accounts for development and tests. Production has no demo data: it starts empty and fills
-with real registrations. `PURGE_DEMO_DATA=true` (or `npm run demo:purge`) removes sample data
-from a database that has it.
-
-| Role | Email | Password |
-|---|---|---|
-| Admin | `admin@bedlink.demo` | `Admin@123` |
-| Dispatcher | `dispatcher1@bedlink.demo`, `dispatcher2@bedlink.demo` | `Dispatch@123` |
-| Hospital staff | `<slug>@bedlink.demo` — `lakeside`, `citygeneral`, `eastwood`, `greenfield`, `sunrise`, `harbourview`, `staurora`, `riverside`, `westbay`, `hilltop`, `northgate`, `farcoast` | `Hospital@123` |
-
-Demo scenario: from the default patient location (19.0760, 72.8777) request
-**ICU + Ventilator + Cardiology** — Lakeside, City General, Greenfield (stale) and Eastwood
-rank; every exclusion reason appears (Sunrise: no ventilator, St. Aurora: critical load,
-Westbay: no ICU, Harbourview/Hilltop/Riverside: no cardiology, Northgate: inactive,
-Far Coast: out of range). Eastwood has exactly one matching bed (good for the
-double-booking demo).
+There is no demo or sample data in the app: everything comes from MongoDB — hospitals and
+ambulances that register and are approved by an admin. On startup the server removes sample
+data that older versions loaded (`PURGE_DEMO_DATA`, default on; the admin account is kept).
+The fictional hospitals used by the automated tests live in `server/tests/fixtures/` only.

@@ -1,13 +1,9 @@
-import { fileURLToPath } from 'node:url';
-import { connectDB, disconnectDB, ensureIndexes } from '../config/db.js';
-import { env } from '../config/env.js';
-import { HOSPITAL_STATUS } from '../constants/hospital.js';
-import { ROLES } from '../constants/roles.js';
-import { DEMO_PASSWORDS, SEED_HOSPITALS, SEED_USERS } from '../constants/seedData.js';
-import * as models from '../models/index.js';
-import { hashPassword } from '../services/auth/password.js';
-import { toPoint } from './geo.js';
-import { errorMeta, logger } from './logger.js';
+import { HOSPITAL_STATUS } from '../../src/constants/hospital.js';
+import { ROLES } from '../../src/constants/roles.js';
+import { DEMO_PASSWORDS, SEED_HOSPITALS, SEED_USERS } from './seedData.js';
+import * as models from '../../src/models/index.js';
+import { hashPassword } from '../../src/services/auth/password.js';
+import { toPoint } from '../../src/utils/geo.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -75,43 +71,4 @@ export async function seedDatabase({ now = new Date() } = {}) {
       users: users.length,
     },
   };
-}
-
-/** localhost / 127.0.0.1 / docker-style `mongo` host — anything else (Atlas…) is treated as shared. */
-export function isLocalDatabase(uri = '') {
-  const hosts = uri
-    .replace(/^mongodb(\+srv)?:\/\//, '')
-    .split('/')[0]
-    .split('@')
-    .pop();
-  return hosts.split(',').every((h) => /^(localhost|127\.0\.0\.1|\[::1\]|mongo|mongodb)(:\d+)?$/i.test(h));
-}
-
-/** `npm run seed` */
-async function main() {
-  if ((env.isProduction || !isLocalDatabase(env.MONGO_URI)) && !env.SEED_ALLOW_PRODUCTION) {
-    console.error('\n[BedLink] Refusing to seed: it WIPES every collection, and MONGO_URI is not a local database');
-    console.error(
-      '(or NODE_ENV=production). Set SEED_ALLOW_PRODUCTION=true for this one command if you really mean it.\n'
-    );
-    process.exit(1);
-  }
-  const started = Date.now();
-  await connectDB();
-  await ensureIndexes();
-  const { counts } = await seedDatabase();
-  logger.info('seed.done', { ...counts, ms: Date.now() - started });
-  console.log(`\nSeeded ${counts.hospitals} hospitals, ${counts.beds} beds, ${counts.users} users.`);
-  console.log(`Admin: admin@bedlink.demo / ${DEMO_PASSWORDS.ADMIN}`);
-  console.log(`Dispatchers: dispatcher1@bedlink.demo, dispatcher2@bedlink.demo / ${DEMO_PASSWORDS.DISPATCHER}`);
-  console.log(`Hospitals: <slug>@bedlink.demo (e.g. lakeside@bedlink.demo) / ${DEMO_PASSWORDS.HOSPITAL}\n`);
-  await disconnectDB();
-}
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch(async (err) => {
-    logger.error('seed.failed', errorMeta(err));
-    await disconnectDB().catch(() => {});
-    process.exit(1);
-  });
 }

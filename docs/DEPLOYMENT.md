@@ -18,8 +18,8 @@ put no secrets in `VITE_*`.
 1. **MongoDB Atlas** cluster (free tier is a replica set → `MONGO_TRANSACTIONS=true`).
    Network access: allow your host's egress IPs (or `0.0.0.0/0` for a hackathon).
 2. A `JWT_SECRET` of 32+ random characters (`openssl rand -hex 32`).
-3. No demo data in production. If an older deploy loaded sample data, set `PURGE_DEMO_DATA=true`
-   once (or leave it on) — it removes only the sample users/hospitals.
+3. No demo data in production. Sample data from older versions is removed automatically at
+   startup (`PURGE_DEMO_DATA`, default on); the admin account and real registrations stay.
 4. Set `ADMIN_EMAIL` + `ADMIN_PASSWORD` (10+ characters) so you can open `/admin/verifications`.
 
 ## Option A — one service, one URL (recommended)

@@ -11,7 +11,6 @@
   "scripts": {
     "dev": "nodemon --watch src src/server.js",
     "start": "node src/server.js",
-    "seed": "node src/utils/seed.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src tests",

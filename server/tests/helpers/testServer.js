@@ -3,11 +3,11 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import supertest from 'supertest';
 import { createApp } from '../../src/app.js';
 import { connectDB, disconnectDB, ensureIndexes } from '../../src/config/db.js';
-import { DEMO_PASSWORDS } from '../../src/constants/seedData.js';
+import { DEMO_PASSWORDS } from '../fixtures/seedData.js';
 import '../../src/models/index.js';
 import { clearAllOfferTimeouts } from '../../src/services/emergency/index.js';
 import { createSocketServer } from '../../src/sockets/index.js';
-import { seedDatabase } from '../../src/utils/seed.js';
+import { seedDatabase } from '../fixtures/seed.js';
 
 export const PATIENT = { lat: 19.076, lng: 72.8777 };
 export const ICU_VENT_CARDIO = {

@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { connectDB, disconnectDB } from '../config/db.js';
 import { env } from '../config/env.js';
 import { ROLES } from '../constants/roles.js';
-import { SEED_HOSPITALS } from '../constants/seedData.js';
 import {
   Bed,
   EmergencyRequest,
@@ -18,6 +17,22 @@ import { logger } from './logger.js';
 
 const DEMO_EMAIL = /@bedlink\.demo$/i;
 
+/** Names of the sample hospitals older versions loaded (they never had a registration number). */
+const SAMPLE_HOSPITAL_NAMES = [
+  'Lakeside Medical Centre',
+  'City General Hospital',
+  'Eastwood Medical',
+  'Greenfield Care Hospital',
+  'Sunrise Hospital',
+  'Harbourview Hospital',
+  'St. Aurora Heart Institute',
+  'Westbay Community Hospital',
+  'Hilltop Neuro Clinic',
+  'Riverside Burns & Trauma Centre',
+  'Northgate Hospital',
+  'Far Coast Hospital',
+];
+
 /**
  * Remove the seeded demo dataset from a database, keeping everything real:
  *   - users with an `@bedlink.demo` email
@@ -30,7 +45,7 @@ export async function purgeDemoData() {
   const realAdmin = env.ADMIN_EMAIL && !DEMO_EMAIL.test(env.ADMIN_EMAIL);
   const userFilter = { email: DEMO_EMAIL, ...(realAdmin ? {} : { role: { $ne: ROLES.ADMIN } }) };
   const hospitalFilter = {
-    name: { $in: SEED_HOSPITALS.map((h) => h.name) },
+    name: { $in: SAMPLE_HOSPITAL_NAMES },
     $or: [{ registrationNumber: { $exists: false } }, { registrationNumber: null }],
   };
 

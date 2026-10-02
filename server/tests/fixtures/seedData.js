@@ -1,3 +1,4 @@
+/** TEST FIXTURE ONLY — never loaded by the app. Fictional hospitals and accounts for the test suite. */
 /**
  * Simulated demo data only (RULES.md §9): fictional hospitals around Mumbai, no real
  * brands, no patient data. The default demo patient location is SEED_PATIENT_LOCATION.
