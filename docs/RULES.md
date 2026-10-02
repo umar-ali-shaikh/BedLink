@@ -63,6 +63,7 @@ Validation errors may add `"details": [{ "path": "requirements.bedType", "messag
 | `FORBIDDEN` | 403 | Wrong role or not owner |
 | `RESOURCE_NOT_FOUND` | 404 | |
 | `INVALID_STATE_TRANSITION` | 409 | e.g. staff editing a `RESERVED` bed, cancelling a completed emergency |
+| `DUPLICATE_RESOURCE` | 409 | unique field already taken (user email, bed label within a hospital) |
 | `OFFER_ALREADY_PENDING` | 409 | request-hospital while an offer is live |
 | `OFFER_EXPIRED` | 409 | accept/reject after `expiresAt` |
 | `OFFER_ALREADY_RESOLVED` | 409 | accept/reject on non-PENDING offer |

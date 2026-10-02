@@ -1,0 +1,41 @@
+import mongoose from 'mongoose';
+import {
+  DEFAULT_HOSPITAL_LOAD,
+  HOSPITAL_STATUS,
+  HOSPITAL_STATUS_VALUES,
+  SPECIALTY_VALUES,
+} from '../constants/hospital.js';
+import { jsonOptions } from './plugins/toJSON.js';
+
+export const pointSchema = new mongoose.Schema(
+  {
+    type: { type: String, enum: ['Point'], default: 'Point', required: true },
+    coordinates: {
+      type: [Number], // [lng, lat]
+      required: true,
+      validate: {
+        validator: (c) => c.length === 2 && Math.abs(c[0]) <= 180 && Math.abs(c[1]) <= 90,
+        message: 'coordinates must be [lng, lat]',
+      },
+    },
+  },
+  { _id: false }
+);
+
+const hospitalSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    address: { type: String, trim: true, default: '' },
+    location: { type: pointSchema, required: true },
+    specialties: { type: [{ type: String, enum: SPECIALTY_VALUES }], default: [] },
+    currentLoad: { type: Number, min: 0, max: 100, default: DEFAULT_HOSPITAL_LOAD },
+    status: { type: String, enum: HOSPITAL_STATUS_VALUES, default: HOSPITAL_STATUS.ACTIVE },
+    lastAvailabilityUpdate: { type: Date, default: null },
+  },
+  { timestamps: true, toJSON: jsonOptions({ location: 'coordinates' }) }
+);
+
+hospitalSchema.index({ location: '2dsphere' });
+hospitalSchema.index({ status: 1 });
+
+export const Hospital = mongoose.model('Hospital', hospitalSchema);

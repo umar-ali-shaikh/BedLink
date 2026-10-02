@@ -1,0 +1,8 @@
+export const RESERVATION_STATUS = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  FULFILLED: 'FULFILLED',
+  EXPIRED: 'EXPIRED',
+  RELEASED: 'RELEASED',
+});
+
+export const RESERVATION_STATUS_VALUES = Object.freeze(Object.values(RESERVATION_STATUS));

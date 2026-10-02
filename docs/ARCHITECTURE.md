@@ -76,8 +76,9 @@ server/
     ├── server.js            # creates HTTP server, attaches Socket.IO, connects Mongo, starts sweeper
     ├── config/              # env loading + validation (zod), db connection, socket config, cookie options
     │   ├── env.js
-    │   ├── db.js
-    │   └── cors.js
+    │   ├── db.js            # connectDB, ensureIndexes, runInTransaction (§13.3)
+    │   ├── cors.js
+    │   └── cookie.js        # bl_token name + options (shared by login/logout)
     ├── constants/           # enums & defaults shared by the server (single source of truth)
     │   ├── roles.js         # ADMIN, HOSPITAL, DISPATCHER
     │   ├── bed.js           # BED_TYPES, EQUIPMENT, BED_STATUS
@@ -95,9 +96,11 @@ server/
     │   ├── authorize.js     # authorize(...roles)
     │   ├── validate.js      # validate({ body, params, query }) with zod
     │   ├── rateLimit.js
+    │   ├── requestLogger.js # one JSON line per request (no bodies)
     │   └── errorHandler.js  # maps AppError → standard error response; hides internals
     ├── models/              # User, Hospital, Bed, EmergencyRequest, HospitalRequest,
     │                        # Reservation, EmergencyTimeline, Notification
+    │                        # plugins/toJSON.js: _id → id, GeoJSON → { lat, lng }, no passwordHash
     ├── repositories/        # userRepo, hospitalRepo, bedRepo, emergencyRepo,
     │                        # hospitalRequestRepo, reservationRepo, timelineRepo, notificationRepo
     ├── routes/              # index.js mounts /api/*; one router per resource
@@ -109,7 +112,10 @@ server/
     │   ├── matching/        # filter.js, score.js, freshness.js, confidence.js, eta.js, index.js (rank)
     │   ├── reservation/     # lockBed (atomic), release, fulfil, expiry sweep
     │   ├── notification/    # emit(event, rooms, payload) + persist Notification
-    │   └── analytics/       # overview aggregation
+    │   ├── analytics/       # overview aggregation
+    │   ├── user/            # admin user management (hospitalId iff HOSPITAL)
+    │   ├── access.js        # shared ownership helpers (own-hospital scope)
+    │   └── sweeper.js       # 10 s loop: expireOverdueOffers + expireOverdueReservations
     ├── sockets/
     │   ├── index.js         # io setup, CORS, handshake auth middleware
     │   ├── rooms.js         # room name helpers: hospitalRoom(id), dispatcherRoom(userId), ...
@@ -120,6 +126,8 @@ server/
     │   ├── geo.js           # haversine
     │   ├── logger.js        # tiny JSON logger (no secrets)
     │   ├── response.js      # ok(res, data), fail(...)
+    │   ├── cookies.js       # Cookie header parser for the socket handshake
+    │   ├── ids.js           # idOf / sameId helpers
     │   └── seed.js          # `npm run seed` — wipes & loads constants/seedData.js
     └── validators/          # auth, hospital, bed, emergency, reservation, user, common (objectId, coords)
 ```
@@ -276,7 +284,7 @@ Indexes: `{ hospitalId: 1, type: 1, status: 1 }`, `{ hospitalId: 1, label: 1 }` 
 | `respondedAt` | Date \| null | |
 | `respondedBy` | ObjectId → User \| null | |
 | `rejectReason` | enum `NO_BED`, `NO_STAFF`, `EQUIPMENT_ISSUE`, `OTHER`, `NO_BED_AT_ACCEPT` | |
-| `matchSnapshot` | `{ score, etaMinutes, confidence }` | What the hospital/dispatcher saw |
+| `matchSnapshot` | `{ score, etaMinutes, distanceKm, confidence }` | What the hospital/dispatcher saw |
 
 Index: `{ status: 1, expiresAt: 1 }` (sweeper), unique partial index
 `{ emergencyId: 1 }` where `status = 'PENDING'` (**at most one live offer per emergency**).
@@ -365,7 +373,8 @@ any non-terminal ── dispatcher cancel ──► CANCELLED
 `*` After a reservation expires the dispatcher must explicitly retry
 (`POST /api/emergencies/:id/request-hospital`); no automatic re-offer.
 Terminal: `COMPLETED`, `NO_MATCH`, `CANCELLED`. (`NO_MATCH` can be retried by the
-dispatcher, which re-runs matching and returns it to `SEARCHING`.)
+dispatcher, which re-runs matching and returns it to `SEARCHING`; a retry starts a new
+round, so `contactedHospitalIds` is cleared.) `NO_MATCH` can also be cancelled.
 
 ### 7.3 HospitalRequest
 
@@ -440,7 +449,8 @@ a conditional update `{ _id, status: 'PENDING' }`. Whoever writes first wins.
 
 | Method & path | Roles | Notes |
 |---|---|---|
-| `POST /api/reservations` | ADMIN | Manual hold `{ requestId, bedId }` — same atomic lock path; used for ops/demo testing of double booking |
+| `GET /api/reservations?status=` | HOSPITAL (own hospital), DISPATCHER (own emergencies), ADMIN | Active/recent holds with bed label — feeds the hospital "Active reservations" list (Mark arrived / Release) |
+| `POST /api/reservations` | ADMIN | Manual hold `{ requestId, bedId }` — same atomic lock path; used for ops/demo testing of double booking. Emergency must be `SEARCHING` or `NO_MATCH` |
 | `POST /api/reservations/:id/release` | HOSPITAL (own), DISPATCHER (owner of request), ADMIN | Bed → `AVAILABLE` |
 | `POST /api/reservations/:id/arrive` | HOSPITAL (own) | Bed → `OCCUPIED`, reservation `FULFILLED`, emergency `COMPLETED` |
 
@@ -497,7 +507,7 @@ authorisation.
 
 | Event | Rooms | Payload (minimum) |
 |---|---|---|
-| `bed:updated` | `role:DISPATCHER`, `role:ADMIN`, `hospital:<id>` | `{ bedId, hospitalId, type, equipment, status, updatedAt, summary }` |
+| `bed:updated` | `role:DISPATCHER`, `role:ADMIN`, `hospital:<id>` | `{ bedId, hospitalId, label, type, equipment, status, updatedAt, summary }` — for **Confirm all**: `bedId: null` and `confirmed: <count>` |
 | `emergency:created` | `dispatcher:<owner>`, `role:ADMIN` | `{ emergency }` |
 | `emergency:updated` | `emergency:<id>`, `dispatcher:<owner>`, `role:ADMIN` | `{ emergencyId, status, currentHospital, timelineEntry }` |
 | `hospital:request` | `hospital:<id>` | `{ hospitalRequestId, emergencyId, requirements, urgency, etaMinutes, distanceKm, expiresAt, serverNow }` |
@@ -530,8 +540,9 @@ rank({
 })
 ```
 
-Data loaded once per call: active hospitals within `MATCH_MAX_RADIUS_KM` (Mongo
-`$geoNear`/`$near`), plus their beds of `requirements.bedType`.
+Data loaded once per call: hospitals within `MATCH_MAX_RADIUS_KM` (default 50, Mongo
+`$geoNear`) — inactive ones too, so they can be listed with `HOSPITAL_INACTIVE` — plus their
+beds of `requirements.bedType`.
 
 ### 10.2 Hard filters (exclusions)
 
@@ -605,7 +616,8 @@ Each downgrade adds a reason, e.g. "Only 1 matching bed", "Missed a request 12 m
 }
 ```
 
-Plus `exclusions: [{ hospitalId, hospitalName, reasons: ['MISSING_EQUIPMENT'] }]`.
+Plus `exclusions: [{ hospitalId, hospitalName, coordinates, reasons: ['MISSING_EQUIPMENT'], messages: ['No available ICU bed with Ventilator'] }]`.
+Candidates also carry `coordinates` (map markers) and `confidenceReasons` (e.g. "Only 1 matching bed").
 Reason strings are generated server-side from codes (`constants/matching.js`); the client
 only renders them.
 
@@ -783,6 +795,8 @@ reservation in the DB.
 | `FRESHNESS_RECENT_SECONDS` | `600` | matching |
 | `MATCH_MAX_ETA_MINUTES` | `60` | matching |
 | `MATCH_CRITICAL_LOAD` | `95` | matching |
+| `MATCH_MAX_RADIUS_KM` | `50` | matching (hospitals loaded via `$geoNear`) |
+| `CONFIDENCE_TIMEOUT_WINDOW_MINUTES` | `30` | confidence downgrade window (§10.5) |
 | `AVG_AMBULANCE_SPEED_KMPH` | `30` | eta |
 | `ROAD_FACTOR` | `1.3` | eta |
 | `VITE_API_URL` | `http://localhost:5000/api` | client |

@@ -1,0 +1,91 @@
+export const EMERGENCY_STATUS = Object.freeze({
+  SEARCHING: 'SEARCHING',
+  AWAITING_HOSPITAL: 'AWAITING_HOSPITAL',
+  RESERVED: 'RESERVED',
+  COMPLETED: 'COMPLETED',
+  NO_MATCH: 'NO_MATCH',
+  CANCELLED: 'CANCELLED',
+});
+
+export const EMERGENCY_STATUS_VALUES = Object.freeze(Object.values(EMERGENCY_STATUS));
+
+/** Statuses from which a dispatcher may (re)request a hospital. */
+export const REQUESTABLE_EMERGENCY_STATUSES = Object.freeze([EMERGENCY_STATUS.SEARCHING, EMERGENCY_STATUS.NO_MATCH]);
+
+/** Statuses from which an emergency can still be cancelled. */
+export const CANCELLABLE_EMERGENCY_STATUSES = Object.freeze([
+  EMERGENCY_STATUS.SEARCHING,
+  EMERGENCY_STATUS.AWAITING_HOSPITAL,
+  EMERGENCY_STATUS.RESERVED,
+  EMERGENCY_STATUS.NO_MATCH,
+]);
+
+/** Fallback stops when the emergency is in one of these. */
+export const FALLBACK_STOP_STATUSES = Object.freeze([
+  EMERGENCY_STATUS.CANCELLED,
+  EMERGENCY_STATUS.COMPLETED,
+  EMERGENCY_STATUS.RESERVED,
+]);
+
+export const URGENCY = Object.freeze({
+  CRITICAL: 'CRITICAL',
+  HIGH: 'HIGH',
+  MODERATE: 'MODERATE',
+});
+
+export const URGENCY_VALUES = Object.freeze(Object.values(URGENCY));
+
+/** Lower = more urgent. Used to sort hospital request queues. */
+export const URGENCY_ORDER = Object.freeze({ CRITICAL: 0, HIGH: 1, MODERATE: 2 });
+
+export const DEFAULT_URGENCY = URGENCY.HIGH;
+
+export const OFFER_STATUS = Object.freeze({
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  TIMEOUT: 'TIMEOUT',
+  CANCELLED: 'CANCELLED',
+});
+
+export const OFFER_STATUS_VALUES = Object.freeze(Object.values(OFFER_STATUS));
+
+export const REJECT_REASONS = Object.freeze({
+  NO_BED: 'NO_BED',
+  NO_STAFF: 'NO_STAFF',
+  EQUIPMENT_ISSUE: 'EQUIPMENT_ISSUE',
+  OTHER: 'OTHER',
+  NO_BED_AT_ACCEPT: 'NO_BED_AT_ACCEPT',
+});
+
+export const REJECT_REASON_VALUES = Object.freeze(Object.values(REJECT_REASONS));
+
+/** Reasons a hospital user may choose. NO_BED_AT_ACCEPT is set only by the server. */
+export const STAFF_REJECT_REASONS = Object.freeze([
+  REJECT_REASONS.NO_BED,
+  REJECT_REASONS.NO_STAFF,
+  REJECT_REASONS.EQUIPMENT_ISSUE,
+  REJECT_REASONS.OTHER,
+]);
+
+export const TIMELINE_EVENTS = Object.freeze({
+  REQUEST_CREATED: 'REQUEST_CREATED',
+  MATCHING_COMPLETED: 'MATCHING_COMPLETED',
+  HOSPITAL_CONTACTED: 'HOSPITAL_CONTACTED',
+  HOSPITAL_ACCEPTED: 'HOSPITAL_ACCEPTED',
+  HOSPITAL_REJECTED: 'HOSPITAL_REJECTED',
+  HOSPITAL_TIMEOUT: 'HOSPITAL_TIMEOUT',
+  ACCEPT_FAILED_NO_BED: 'ACCEPT_FAILED_NO_BED',
+  BED_RESERVED: 'BED_RESERVED',
+  NO_HOSPITALS_REMAINING: 'NO_HOSPITALS_REMAINING',
+  REQUEST_CANCELLED: 'REQUEST_CANCELLED',
+  RESERVATION_EXPIRED: 'RESERVATION_EXPIRED',
+  RESERVATION_RELEASED: 'RESERVATION_RELEASED',
+  PATIENT_ARRIVED: 'PATIENT_ARRIVED',
+});
+
+export const TIMELINE_EVENT_VALUES = Object.freeze(Object.values(TIMELINE_EVENTS));
+
+export const ACTOR_TYPES = Object.freeze({ USER: 'USER', SYSTEM: 'SYSTEM' });
+
+export const DEMO_PATIENT_PREFIX = 'DEMO-P-';
