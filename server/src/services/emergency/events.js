@@ -1,6 +1,6 @@
 import { ROLES } from '../../constants/roles.js';
 import { SERVER_EVENTS } from '../../constants/socketEvents.js';
-import { dispatcherRoom, emergencyRoom, hospitalRoom, roleRoom } from '../../sockets/rooms.js';
+import { bookingRoom, dispatcherRoom, emergencyRoom, hospitalRoom, roleRoom } from '../../sockets/rooms.js';
 import { idOf } from '../../utils/ids.js';
 import { emit, notify } from '../notification/index.js';
 
@@ -11,16 +11,31 @@ export const emergencyRooms = (emergency) => [
   roleRoom(ROLES.ADMIN),
 ];
 
-/** Emergency rooms + the hospital involved (accept/reject/timeout/reservation events). */
-export const offerRooms = (emergency, hospitalId) => [...emergencyRooms(emergency), hospitalRoom(idOf(hospitalId))];
+/** The caller's tracking room, when the emergency was raised from a public booking. */
+export const bookingRoomsOf = (emergency) => (emergency.bookingId ? [bookingRoom(idOf(emergency.bookingId))] : []);
+
+/**
+ * Emergency rooms + the hospital involved (accept/reject/timeout/reservation events) + the
+ * caller's booking room. These payloads are ids and display basics only.
+ */
+export const offerRooms = (emergency, hospitalId) => [
+  ...emergencyRooms(emergency),
+  hospitalRoom(idOf(hospitalId)),
+  ...bookingRoomsOf(emergency),
+];
 
 export function emitEmergencyUpdated(emergency, timelineEntry = null) {
-  emit(SERVER_EVENTS.EMERGENCY_UPDATED, emergencyRooms(emergency), {
+  const base = {
     emergencyId: idOf(emergency),
     status: emergency.status,
     currentHospital: idOf(emergency.currentHospital),
+  };
+  emit(SERVER_EVENTS.EMERGENCY_UPDATED, emergencyRooms(emergency), {
+    ...base,
     timelineEntry: timelineEntry?.toJSON?.() ?? timelineEntry,
   });
+  // The caller gets the status only — never the audit-log entry (actors, scores, bed labels).
+  if (emergency.bookingId) emit(SERVER_EVENTS.EMERGENCY_UPDATED, bookingRoomsOf(emergency), base);
 }
 
 /** Persisted alert for the owner dispatcher. */

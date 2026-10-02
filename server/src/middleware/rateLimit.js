@@ -20,6 +20,17 @@ export const registerLimiter = rateLimit({
   limit: () => env.REGISTER_RATE_LIMIT_PER_HOUR,
 });
 
+/**
+ * New public bookings: BOOKING_RATE_LIMIT_PER_IP_PER_HOUR per IP (default 10). Not skipped in
+ * tests (the per-IP limit has its own test); the test env sets a high limit instead.
+ */
+export const bookingLimiter = rateLimit({
+  ...base,
+  skip: () => false,
+  windowMs: 60 * 60_000,
+  limit: () => env.BOOKING_RATE_LIMIT_PER_IP_PER_HOUR,
+});
+
 /** Place search: 40/min/IP (typing is debounced on the client; results are cached). */
 export const geocodeLimiter = rateLimit({ ...base, limit: 40 });
 

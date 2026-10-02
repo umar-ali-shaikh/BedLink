@@ -9,6 +9,9 @@ import { EmergencyTimeline } from '../../features/emergency/EmergencyTimeline';
 import { HospitalCard } from '../../features/dispatcher/HospitalCard';
 import { ExcludedList } from '../../features/dispatcher/ExcludedList';
 import { MapPanel } from '../../features/dispatcher/MapPanel';
+import { CallerCard } from '../../features/booking/CallerCard';
+import { CancelBookingModal } from '../../features/booking/CancelBookingModal';
+import { ambulanceApi } from '../../features/booking/api';
 import { emergencyApi } from '../../features/dispatcher/api';
 import { reservationsApi } from '../../features/reservations/api';
 import { ReservationActions, ReservationCard } from '../../features/reservations/ReservationCard';
@@ -86,6 +89,17 @@ export function EmergencyDetailPage() {
     },
     onError: (err) => showToast({ type: 'error', title: 'Could not cancel', message: errorMessage(err) }),
   });
+  // A public booking is cancelled with a reason (the caller sees it; fake reports count against the number).
+  const bookingCancellable = ['AMBULANCE_ASSIGNED', 'ON_THE_WAY', 'AT_PICKUP'].includes(e?.booking?.status);
+  const cancelBooking = useMutation({
+    mutationFn: (body) => ambulanceApi.cancelBooking(e.booking.id, body),
+    onSuccess: () => {
+      setConfirmCancel(false);
+      refresh();
+      showToast({ type: 'info', title: 'Booking cancelled', message: 'The caller was told why. Held beds were released.' });
+    },
+    onError: (err) => showToast({ type: 'error', title: 'Could not cancel', message: errorMessage(err) }),
+  });
   const release = useMutation({
     mutationFn: () => reservationsApi.release(e.reservation.id),
     onSuccess: () => {
@@ -156,6 +170,7 @@ export function EmergencyDetailPage() {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <div className="space-y-4 min-w-0">
+          <CallerCard booking={e.booking} />
           {activeReservation && (
             <ReservationCard
               reservation={activeReservation}
@@ -201,8 +216,11 @@ export function EmergencyDetailPage() {
         </Card>
       </div>
 
+      {confirmCancel && bookingCancellable && (
+        <CancelBookingModal isOpen onClose={() => setConfirmCancel(false)} onConfirm={(body) => cancelBooking.mutate(body)} isLoading={cancelBooking.isPending} />
+      )}
       <ConfirmDialog
-        isOpen={confirmCancel}
+        isOpen={confirmCancel && !bookingCancellable}
         onClose={() => setConfirmCancel(false)}
         onConfirm={() => cancel.mutate()}
         isLoading={cancel.isPending}

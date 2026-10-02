@@ -1,17 +1,22 @@
 import { CLIENT_EVENTS } from '../constants/socketEvents.js';
 import { ROLES } from '../constants/roles.js';
 import { zodDetails } from '../middleware/validate.js';
+import { updateAmbulanceLocation } from '../services/booking/index.js';
 import { acceptOffer, canFollowEmergency, createEmergency, rejectOffer } from '../services/emergency/index.js';
 import { AppError } from '../utils/AppError.js';
 import { errorMeta, logger } from '../utils/logger.js';
 import { emergencyBody } from '../validators/emergency.js';
 import { hospitalRespondPayload } from '../validators/hospitalRequest.js';
+import { locationPayload } from '../validators/booking.js';
 import { objectId } from '../validators/common.js';
-import { dispatcherRoom, emergencyRoom, hospitalRoom, roleRoom } from './rooms.js';
+import { bookingRoom, dispatcherRoom, emergencyRoom, hospitalRoom, roleRoom } from './rooms.js';
 
 /** Rooms are derived from the authenticated user only — client room names are ignored. */
 export function joinDefaultRooms(socket) {
-  const { user } = socket.data;
+  const { user, bookingId } = socket.data;
+  // A public caller joined with a tracking token: their one booking room, no role rooms.
+  if (bookingId) socket.join(bookingRoom(bookingId));
+  if (!user) return;
   socket.join(roleRoom(user.role));
   if (user.role === ROLES.HOSPITAL && user.hospitalId) socket.join(hospitalRoom(user.hospitalId));
   if (user.role === ROLES.DISPATCHER) socket.join(dispatcherRoom(user.id));
@@ -47,6 +52,7 @@ function parse(schema, payload) {
 
 export function registerHandlers(socket) {
   const { user } = socket.data;
+  if (!user) return; // tracking-token guests only listen; they have nothing to send
 
   socket.on(
     CLIENT_EVENTS.JOIN_HOSPITAL,
@@ -77,6 +83,12 @@ export function registerHandlers(socket) {
     })
   );
 
+  socket.on(
+    CLIENT_EVENTS.AMBULANCE_LOCATION,
+    guarded(socket, [ROLES.DISPATCHER], async (payload) =>
+      updateAmbulanceLocation(user, parse(locationPayload, payload))
+    )
+  );
   socket.on(
     CLIENT_EVENTS.HOSPITAL_RESPOND,
     guarded(socket, [ROLES.HOSPITAL], async (payload) => {

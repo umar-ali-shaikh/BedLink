@@ -25,6 +25,15 @@ export const HOSPITAL_STATUS_VALUES = Object.freeze(Object.values(HOSPITAL_STATU
 
 export const DEFAULT_HOSPITAL_LOAD = 50;
 
+/** Who runs the hospital. Display only, never used by matching or scoring. Older hospitals have none. */
+export const HOSPITAL_OWNERSHIP = Object.freeze({
+  GOVERNMENT: 'GOVERNMENT',
+  SEMI_GOVERNMENT: 'SEMI_GOVERNMENT',
+  PRIVATE: 'PRIVATE',
+});
+
+export const HOSPITAL_OWNERSHIP_VALUES = Object.freeze(Object.values(HOSPITAL_OWNERSHIP));
+
 /**
  * Self-registered hospitals start PENDING and are invisible to matching until VERIFIED
  * (by `npm run hospitals -- verify`, or automatically with HOSPITAL_AUTO_VERIFY=true).

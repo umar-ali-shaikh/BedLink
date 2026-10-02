@@ -16,6 +16,9 @@ import { assertHospitalScope } from '../access.js';
 import { publishBedChange } from '../bed/index.js';
 import { emitEmergencyUpdated, notifyDispatcher, offerRooms } from '../emergency/events.js';
 import { SYSTEM_ACTOR, entry, record, userActor } from '../emergency/timeline.js';
+import { loadCrewViews } from '../ambulance/view.js';
+import { BOOKING_STATUS } from '../../constants/booking.js';
+import { closeBookingForEmergency } from '../booking/lifecycle.js';
 import { emit, notify } from '../notification/index.js';
 
 /**
@@ -261,6 +264,7 @@ export async function arriveReservation(id, user) {
     metadata: { bedLabel: bed?.label ?? null },
   });
   if (emergency) emitEmergencyUpdated(emergency, timelineEntry);
+  await closeBookingForEmergency(fulfilled.requestId, BOOKING_STATUS.COMPLETED, now);
   if (bed) await publishBedChange(fulfilled.hospitalId, bed);
   return fulfilled;
 }
@@ -313,8 +317,19 @@ export async function listReservations(user, { statuses } = {}) {
   if (user.role === ROLES.DISPATCHER) filter.requestId = { $in: await emergencyRepo.idsByDispatcher(user.id) };
   if (statuses?.length) filter.status = { $in: statuses };
   const reservations = await reservationRepo.list(filter);
+  // Hospital staff see which ambulance is bringing the patient (vehicle, driver, organisation, crew phone).
+  let crewByRequest = new Map();
+  if (user.role === ROLES.HOSPITAL && reservations.length) {
+    const emergencies = await emergencyRepo.findByIds(
+      reservations.map((r) => r.requestId),
+      'dispatcherId'
+    );
+    const crews = await loadCrewViews(emergencies.map((e) => e.dispatcherId));
+    crewByRequest = new Map(emergencies.map((e) => [idOf(e), crews.get(idOf(e.dispatcherId)) ?? null]));
+  }
   return reservations.map((r) => {
     const json = r.toJSON();
+    if (user.role === ROLES.HOSPITAL) json.ambulance = crewByRequest.get(idOf(r.requestId)) ?? null;
     if (r.bedId?.label) {
       json.bedId = idOf(r.bedId);
       json.bed = { id: idOf(r.bedId), label: r.bedId.label, type: r.bedId.type, equipment: r.bedId.equipment };

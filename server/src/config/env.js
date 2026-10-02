@@ -85,6 +85,27 @@ const envSchema = z.object({
   CONFIDENCE_TIMEOUT_WINDOW_MINUTES: positiveInt.default(30),
   AVG_AMBULANCE_SPEED_KMPH: positiveNumber.default(30),
   ROAD_FACTOR: positiveNumber.default(1.3),
+  // Public ambulance booking (ARCHITECTURE.md §6.9, §15).
+  /** Seconds an ambulance has to accept or reject an offered booking. */
+  BOOKING_OFFER_TIMEOUT_SECONDS: positiveNumber.default(60),
+  /** An on-duty ambulance whose last GPS position is older than this gets no bookings. */
+  AMBULANCE_LOCATION_MAX_AGE_SECONDS: positiveInt.default(120),
+  /** Server-side floor between two stored positions of one ambulance (the client sends at most 1 per 10 s). */
+  AMBULANCE_LOCATION_MIN_INTERVAL_SECONDS: positiveNumber.default(10),
+  /** New bookings per IP per hour. */
+  BOOKING_RATE_LIMIT_PER_IP_PER_HOUR: positiveInt.default(10),
+  /** New bookings per phone number per hour. */
+  BOOKING_RATE_LIMIT_PER_PHONE_PER_HOUR: positiveInt.default(5),
+  /** Closed bookings lose name, phone, notes and pickup after this many days. */
+  BOOKING_PII_RETENTION_DAYS: positiveNumber.default(30),
+  /** Fake/prank reports on one phone number within the window that trigger a block... */
+  FAKE_REPORT_BLOCK_THRESHOLD: positiveInt.default(3),
+  /** ...counted over this many days (reports also expire from the database after it)... */
+  FAKE_REPORT_WINDOW_DAYS: positiveInt.default(30),
+  /** ...and new bookings from that number are refused for this many hours after the latest report. */
+  FAKE_REPORT_BLOCK_HOURS: positiveNumber.default(72),
+  /** The ambulance counts as "reached the caller" within this distance of the pickup. */
+  BOOKING_PICKUP_RADIUS_METERS: positiveNumber.default(100),
 });
 
 /**

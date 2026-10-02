@@ -7,7 +7,7 @@ import { MapPanel } from '../../features/dispatcher/MapPanel';
 import { LocationSearch } from '../../features/location/LocationSearch';
 import { Button } from '../../components/Button';
 import { HFR_ID_PATTERN, PHONE_PATTERN, REGISTRATION_NUMBER_PATTERN, normalisePhone } from '../../constants/ambulance';
-import { SPECIALTY_LABELS, SPECIALTY_VALUES } from '../../constants/hospital';
+import { OWNERSHIP_LABELS, OWNERSHIP_VALUES, SPECIALTY_LABELS, SPECIALTY_VALUES } from '../../constants/hospital';
 import { ROUTES } from '../../constants/routes';
 import { errorMessage } from '../../services/api';
 import { cn } from '../../utils/cn';
@@ -22,6 +22,7 @@ const EMPTY = {
   hospitalEmail: '',
   address: '',
   place: null,
+  ownership: '',
   specialties: [],
   contactName: '',
   email: '',
@@ -41,6 +42,7 @@ function validate(f, google) {
   if (!PHONE_PATTERN.test(normalisePhone(f.phone))) e.phone = 'Enter a valid 10-digit number';
   if (!validEmail(f.hospitalEmail)) e.hospitalEmail = 'Enter the official hospital email';
   if (f.address.trim().length < 5) e.address = 'Enter the full address';
+  if (!f.ownership) e.ownership = 'Choose the hospital ownership';
   if (!f.place) e.location = 'Search for the hospital and pick it from the list';
   if (f.contactName.trim().length < 2) e.contactName = 'Enter your name';
   if (!validEmail(f.email)) e.email = 'Enter a valid email';
@@ -116,6 +118,7 @@ export function RegisterHospitalPage() {
           name: form.name.trim(),
           address: form.address.trim(),
           coordinates: { lat: form.place.lat, lng: form.place.lng },
+          ownership: form.ownership,
           specialties: form.specialties,
           registrationNumber: form.registrationNumber.trim().toUpperCase(),
           ...(form.hfrId.trim() ? { hfrId: form.hfrId.replace(/[\s-]/g, '').toUpperCase() } : {}),
@@ -170,6 +173,30 @@ export function RegisterHospitalPage() {
             <Field id="hospitalEmail" label="Official email" error={errors.hospitalEmail}>
               {input('hospitalEmail', { type: 'email', placeholder: 'info@yourhospital.in' })}
             </Field>
+          </div>
+          <div>
+            <span className="label" id="ownership">
+              Ownership
+            </span>
+            <div role="radiogroup" aria-labelledby="ownership" className="grid grid-cols-3 gap-2">
+              {OWNERSHIP_VALUES.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.ownership === v}
+                  data-testid={`ownership-${v}`}
+                  onClick={() => setForm((f) => ({ ...f, ownership: v }))}
+                  className={cn(
+                    'min-h-[44px] rounded-md border px-2 py-2 text-small font-semibold transition-colors',
+                    form.ownership === v ? 'border-primary bg-primary-soft text-primary' : 'border-border text-text hover:border-border-strong'
+                  )}
+                >
+                  {OWNERSHIP_LABELS[v]}
+                </button>
+              ))}
+            </div>
+            {errors.ownership && <p className="mt-1 text-[12px] text-danger">{errors.ownership}</p>}
           </div>
           <div>
             <span className="label">Departments</span>

@@ -7,6 +7,7 @@ import { purgeDemoData } from './utils/purgeDemo.js';
 import { ensureAdmin } from './services/auth/bootstrapAdmin.js';
 import { createApp } from './app.js';
 import { createSocketServer } from './sockets/index.js';
+import { clearAllBookingOfferTimeouts, restoreBookingOfferTimers } from './services/booking/index.js';
 import { clearAllOfferTimeouts, restorePendingTimers } from './services/emergency/index.js';
 import { startSweeper, stopSweeper, sweepOnce } from './services/sweeper.js';
 import { errorMeta, logger } from './utils/logger.js';
@@ -31,6 +32,7 @@ async function start() {
   // Recover work from before a restart: overdue items now, pending offers via timers.
   await sweepOnce();
   const restored = await restorePendingTimers();
+  const restoredBookingOffers = await restoreBookingOfferTimers();
   startSweeper();
 
   server.listen(env.PORT, env.HOST, () => {
@@ -39,6 +41,7 @@ async function start() {
       port: env.PORT,
       env: env.NODE_ENV,
       restoredOfferTimers: restored,
+      restoredBookingOfferTimers: restoredBookingOffers,
     });
   });
 
@@ -49,6 +52,7 @@ async function start() {
     logger.info('server.shutdown', { signal });
     stopSweeper();
     clearAllOfferTimeouts();
+    clearAllBookingOfferTimeouts();
     io.close();
     server.close();
     await disconnectDB().catch(() => {});

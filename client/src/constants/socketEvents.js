@@ -12,9 +12,14 @@ export const SOCKET_EVENTS = Object.freeze({
   RESERVATION_EXPIRED: 'reservation:expired',
   RESERVATION_RELEASED: 'reservation:released',
   VERIFICATION_UPDATED: 'verification:updated',
+  BOOKING_UPDATED: 'booking:updated',
+  BOOKING_OFFER: 'booking:offer',
+  BOOKING_OFFER_CANCELLED: 'booking:offer-cancelled',
+  BOOKING_AMBULANCE_LOCATION: 'booking:ambulance-location',
 });
 
 export const CLIENT_EVENTS = Object.freeze({
   JOIN_HOSPITAL: 'join:hospital',
   JOIN_DISPATCHER: 'join:dispatcher',
+  AMBULANCE_LOCATION: 'ambulance:location',
 });

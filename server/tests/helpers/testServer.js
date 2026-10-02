@@ -5,6 +5,7 @@ import { createApp } from '../../src/app.js';
 import { connectDB, disconnectDB, ensureIndexes } from '../../src/config/db.js';
 import { DEMO_PASSWORDS } from '../fixtures/seedData.js';
 import '../../src/models/index.js';
+import { clearAllBookingOfferTimeouts } from '../../src/services/booking/index.js';
 import { clearAllOfferTimeouts } from '../../src/services/emergency/index.js';
 import { createSocketServer } from '../../src/sockets/index.js';
 import { seedDatabase } from '../fixtures/seed.js';
@@ -28,12 +29,14 @@ export async function startTestDb() {
 
 export async function stopTestDb() {
   clearAllOfferTimeouts();
+  clearAllBookingOfferTimeouts();
   await disconnectDB();
   await replSet?.stop();
 }
 
 export async function resetDb() {
   clearAllOfferTimeouts();
+  clearAllBookingOfferTimeouts();
   return seedDatabase();
 }
 

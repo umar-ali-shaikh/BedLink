@@ -37,6 +37,13 @@ const userSchema = new mongoose.Schema(
           vehicleNumber: { type: String, trim: true, uppercase: true, required: true },
           ambulanceType: { type: String, enum: AMBULANCE_TYPE_VALUES, required: true },
           organization: { type: String, trim: true, default: '' },
+          /** The person driving (may differ from the account holder). Older accounts have none. */
+          driverName: { type: String, trim: true, default: undefined },
+          licenceNumber: { type: String, trim: true, uppercase: true, default: undefined },
+          /** Public bookings go only to verified, on-duty ambulances with a recent position. */
+          onDuty: { type: Boolean, default: false },
+          location: { type: new mongoose.Schema({ lat: Number, lng: Number }, { _id: false }), default: undefined },
+          locationAt: { type: Date, default: null },
         },
         { _id: false }
       ),
@@ -55,7 +62,16 @@ userSchema.index(
   }
 );
 
+userSchema.index(
+  { 'ambulance.licenceNumber': 1 },
+  {
+    unique: true,
+    partialFilterExpression: { 'ambulance.licenceNumber': { $type: 'string' } },
+    name: 'unique_ambulance_licence',
+  }
+);
 userSchema.index({ role: 1, verificationStatus: 1 });
+userSchema.index({ role: 1, 'ambulance.onDuty': 1, 'ambulance.locationAt': -1 });
 userSchema.index(
   { googleId: 1 },
   { unique: true, partialFilterExpression: { googleId: { $type: 'string' } }, name: 'unique_google_id' }

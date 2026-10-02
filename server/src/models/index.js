@@ -6,3 +6,6 @@ export { HospitalRequest } from './HospitalRequest.js';
 export { Reservation } from './Reservation.js';
 export { EmergencyTimeline } from './EmergencyTimeline.js';
 export { Notification } from './Notification.js';
+export { Booking } from './Booking.js';
+export { AmbulanceOffer } from './AmbulanceOffer.js';
+export { FakeReport } from './FakeReport.js';

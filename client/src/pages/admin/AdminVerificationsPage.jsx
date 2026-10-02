@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ambulance, BadgeCheck, Building2, Check, ExternalLink, Mail, MapPin, Phone, ShieldCheck, X } from 'lucide-react';
+import { Ambulance, BadgeCheck, Building2, Check, ExternalLink, IdCard, Mail, MapPin, Phone, ShieldCheck, UserRound, X } from 'lucide-react';
 import { PageHeader } from '../../components/PageHeader';
 import { KpiStrip } from '../../components/KpiStrip';
 import { Segmented } from '../../components/Segmented';
@@ -13,6 +13,7 @@ import { useToast } from '../../components/Toast';
 import { useNow } from '../../hooks/useNow';
 import { verificationApi } from '../../features/verification/api';
 import { verificationKeys } from '../../layouts/AdminLayout';
+import { OwnershipBadge } from '../../components/OwnershipBadge';
 import { SPECIALTY_LABELS } from '../../constants/hospital';
 import { errorMessage } from '../../services/api';
 import { formatRelativeTime } from '../../utils/formatRelative';
@@ -36,6 +37,7 @@ const CHECKS = {
   ],
   ambulance: [
     'Vehicle number found on Parivahan / VAHAN and registered as an ambulance',
+    'Driving licence number found on Parivahan Sarathi, valid, and the holder matches the driver name',
     'Called the crew phone — they confirmed',
     'Organisation (if given) checked',
   ],
@@ -128,6 +130,7 @@ function HospitalCard({ h, now, onDecide }) {
         <div className="min-w-0">
           <h3 className="text-h3 text-text break-words">{h.name}</h3>
           <p className="text-[12px] text-text-subtle">Registered {formatRelativeTime(h.createdAt, now)}</p>
+          <OwnershipBadge ownership={h.ownership} className="mt-1.5" />
         </div>
         <StatusPill status={h.verificationStatus} />
       </header>
@@ -193,6 +196,11 @@ function AmbulanceCard({ u, now, onDecide }) {
         <Detail icon={Ambulance}>
           {u.name}
           {a.organization ? ` · ${a.organization}` : ''}
+        </Detail>
+        <Detail icon={UserRound}>Driver: {a.driverName || 'Not given'}</Detail>
+        <Detail icon={IdCard}>
+          Licence: <span className="font-semibold tabular-nums">{a.licenceNumber || 'Not given'}</span>{' '}
+          <A href="https://sarathi.parivahan.gov.in">Check licence on Parivahan Sarathi</A>
         </Detail>
         <Detail icon={Phone}>
           {u.phone ? (

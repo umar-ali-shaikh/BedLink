@@ -14,6 +14,8 @@ export const qk = {
   reservationsAll: ['reservations'],
   analytics: ['analytics', 'overview'],
   users: ['users'],
+  tracking: (token) => ['booking', 'tracking', token],
+  bookingOffers: ['booking-offers'],
 };
 
 export const statusParam = (statuses) => (statuses?.length ? { status: statuses.join(',') } : undefined);

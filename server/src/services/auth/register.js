@@ -50,6 +50,7 @@ function mapDuplicateKey(err) {
   if (err?.code !== 11000) return err;
   const key = Object.keys(err.keyPattern ?? {})[0] ?? '';
   if (key === 'email') return duplicate('email', 'An account with this email already exists');
+  if (key.includes('licenceNumber')) return duplicate('licenceNumber', 'This driving licence is already registered');
   if (key.includes('vehicleNumber')) return duplicate('vehicleNumber', 'This ambulance is already registered');
   if (key === 'registrationNumber')
     return duplicate('hospital.registrationNumber', 'This registration number is already registered');
@@ -70,12 +71,16 @@ export async function registerAmbulance({
   phone,
   vehicleNumber,
   ambulanceType,
+  driverName,
+  licenceNumber,
   organization,
 }) {
   assertEnabled();
   if (await userRepo.existsByEmail(email)) throw duplicate('email', 'An account with this email already exists');
   if (await userRepo.existsByVehicle(vehicleNumber))
     throw duplicate('vehicleNumber', 'This ambulance is already registered');
+  if (await userRepo.existsByLicence(licenceNumber))
+    throw duplicate('licenceNumber', 'This driving licence is already registered');
 
   const credentials = await credentialsFor({ email, password, googleCredential }, 'email');
   try {
@@ -85,7 +90,7 @@ export async function registerAmbulance({
       phone,
       role: ROLES.DISPATCHER,
       ...credentials,
-      ambulance: { vehicleNumber, ambulanceType, organization: organization ?? '' },
+      ambulance: { vehicleNumber, ambulanceType, driverName, licenceNumber, organization: organization ?? '' },
       verificationStatus: env.AMBULANCE_AUTO_VERIFY ? VERIFICATION_STATUS.VERIFIED : VERIFICATION_STATUS.PENDING,
       verifiedAt: env.AMBULANCE_AUTO_VERIFY ? new Date() : null,
       verificationNote: env.AMBULANCE_AUTO_VERIFY ? 'Automatically verified (AMBULANCE_AUTO_VERIFY)' : '',

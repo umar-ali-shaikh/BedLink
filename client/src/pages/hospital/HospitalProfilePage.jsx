@@ -7,6 +7,7 @@ import { useMyHospital } from '../../features/hospital/hooks';
 import { hospitalsApi } from '../../features/hospitals/api';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
+import { OwnershipBadge } from '../../components/OwnershipBadge';
 import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
 import { useToast } from '../../components/Toast';
@@ -80,6 +81,7 @@ export function HospitalProfilePage() {
         <p className={cn('mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold', status.cls)}>
           <StatusIcon className="w-4 h-4" aria-hidden /> {status.text}
         </p>
+        <OwnershipBadge ownership={h.ownership} size="md" className="ml-2" />
         <dl className="mt-3">
           <Row label="Registration no." value={h.registrationNumber} />
           <Row label="ABDM Facility ID" value={h.hfrId} />

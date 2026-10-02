@@ -182,6 +182,9 @@ query caches (`queryClient.setQueryData` / `invalidateQueries`). No Redux.
 | `/hospital/dashboard` | HOSPITAL | Incoming request (top, prominent), bed counters, load control |
 | `/hospital/beds` | HOSPITAL | Bed grid with one-tap status chips, Confirm all |
 | `/hospital/requests` | HOSPITAL | Pending + recent requests, active reservations, "Mark arrived" |
+| `/book` | public | Book an ambulance (name, mobile, pickup via address search/GPS, notes, condition, urgency) |
+| `/track/:token` | public (token) | Live booking status timeline, ambulance map + ETA, hospital stage, cancel / try again |
+| `/ambulance/profile` | DISPATCHER | Verification status, read-only vehicle/licence/driver, editable phone + organisation, sign out |
 | `/admin/dashboard` | ADMIN | Analytics + live emergencies |
 | `/admin/hospitals` | ADMIN | Hospital list/create/edit, bed inventory |
 | `/admin/users` | ADMIN | User list/create, role + hospital assignment |
@@ -223,6 +226,8 @@ User 1 ── * Notification
 | `role` | enum `ADMIN \| HOSPITAL \| DISPATCHER` | |
 | `hospitalId` | ObjectId → Hospital | **required iff** role = HOSPITAL, else null |
 | `isActive` | Boolean, default true | |
+| `phone` | String | Crew phone for ambulances (editable via `PATCH /api/ambulance/profile`) |
+| `ambulance` | `{ vehicleNumber, ambulanceType, driverName, licenceNumber, organization, onDuty, location {lat,lng}, locationAt }` | DISPATCHER only. `driverName` + `licenceNumber` (15-char Indian DL, normalised, **unique partial index**) are required at registration but optional in the schema for older accounts. Only phone and organisation are editable afterwards. `onDuty`/`location`/`locationAt` drive public-booking dispatch |
 | `createdAt`, `updatedAt` | Date | |
 
 ### 6.2 Hospital
@@ -235,6 +240,7 @@ User 1 ── * Notification
 | `specialties` | [enum SPECIALTIES] | |
 | `currentLoad` | Number 0–100, default 50 | Set by hospital staff (slider) |
 | `status` | enum `ACTIVE \| INACTIVE` | |
+| `ownership` | enum `GOVERNMENT \| SEMI_GOVERNMENT \| PRIVATE` | Required at registration; display only (badge), never used by matching/scoring. Hospitals created before it show "Not specified". Copied onto candidate snapshots |
 | `lastAvailabilityUpdate` | Date | Denormalised max(bed.updatedAt); updated by bed service |
 | `createdAt`, `updatedAt` | Date | |
 
@@ -269,6 +275,7 @@ Indexes: `{ hospitalId: 1, type: 1, status: 1 }`, `{ hospitalId: 1, label: 1 }` 
 | `exclusions` | [{ hospitalId, hospitalName, reasons: [code] }] | "Why not" |
 | `matchingDurationMs` | Number | Analytics |
 | `reservationId` | ObjectId \| null | |
+| `bookingId` | ObjectId → Booking \| null | Set when raised from a public booking; routes the caller's live events |
 | `createdAt`, `updatedAt` | Date | |
 
 ### 6.5 HospitalRequest (offer)
@@ -338,6 +345,33 @@ Persisted copy of user-facing alerts so a reconnecting client can catch up.
 
 ---
 
+### 6.9 Booking (public ambulance booking — the only model holding personal data, RULES.md §9)
+
+| Field | Type | Notes |
+|---|---|---|
+| `patientName`, `phone` | String | 10-digit Indian mobile. Purged after `BOOKING_PII_RETENTION_DAYS` once closed |
+| `pickupLocation`, `pickupLabel` | GeoJSON Point, String | From address search or GPS (no map pin-dropping) |
+| `notes` | String ≤ 300 | Landmark |
+| `condition` | enum `CARDIAC \| BREATHING \| TRAUMA \| BURNS \| STROKE \| OTHER` | Mapped to bed requirements by the single table `CONDITION_REQUIREMENTS` (`constants/booking.js`) |
+| `urgency` | enum URGENCY | |
+| `status` | enum BOOKING_STATUS | §7.5 |
+| `trackingTokenHash` | String, unique | SHA-256 of the 192-bit token shown once at creation |
+| `activePhone` | String, **unique partial index** | Set while active → one active booking per phone |
+| `currentOfferId`, `contactedAmbulanceIds` | | The live ambulance offer; ambulances already tried this round |
+| `ambulanceId`, `emergencyId` | ObjectId | Assigned ambulance (owns the emergency); the auto-raised emergency |
+| `cancelledBy` (`CALLER \| AMBULANCE`), `cancelReason`, `cancelNote` | | Reason enum: `FAKE_OR_PRANK, CALLER_UNREACHABLE, DUPLICATE, PATIENT_ALREADY_TRANSPORTED, OTHER` |
+| `assignedAt`, `onTheWayAt`, `atPickupAt`, `closedAt`, `piiPurgedAt` | Date | |
+
+### 6.10 AmbulanceOffer
+
+Same shape as HospitalRequest (§6.5): `bookingId`, `ambulanceId`, `attempt`, `status` (`PENDING \| ACCEPTED \| REJECTED \| TIMEOUT \| CANCELLED`), `offeredAt`, `expiresAt` (`+ BOOKING_OFFER_TIMEOUT_SECONDS`), `respondedAt`, `distanceKm`, `etaMinutes`. Unique partial indexes: one PENDING offer per booking and per ambulance. Only verified, on-duty ambulances with a position newer than `AMBULANCE_LOCATION_MAX_AGE_SECONDS`, not busy, within `MATCH_MAX_ETA_MINUTES`, are offered, nearest (great-circle) first.
+
+### 6.11 FakeReport
+
+`{ phoneHash (HMAC-SHA256 of the number), bookingId, reportedAt }` — one per booking cancelled as `FAKE_OR_PRANK`. TTL index on `reportedAt` = `FAKE_REPORT_WINDOW_DAYS`. At `FAKE_REPORT_BLOCK_THRESHOLD` reports in the window, new bookings from that number get `403 PHONE_BLOCKED` until `FAKE_REPORT_BLOCK_HOURS` after the latest report.
+
+---
+
 ## 7. State Machines
 
 ### 7.1 Bed
@@ -386,6 +420,19 @@ a conditional update `{ _id, status: 'PENDING' }`. Whoever writes first wins.
 `ACTIVE → FULFILLED | EXPIRED | RELEASED`.
 
 ---
+
+### 7.5 Booking
+
+```text
+FINDING_AMBULANCE ──ambulance accepts──► AMBULANCE_ASSIGNED ──first GPS fix──► ON_THE_WAY ──within BOOKING_PICKUP_RADIUS_METERS──► AT_PICKUP
+   │ ▲                                         │ (emergency raised + top hospital contacted)                                    │
+   │ └── reject / timeout: next nearest        └──────────── hospital arrive ──► COMPLETED ◄────────────────────────────────────┘
+   └── nobody left ──► NO_AMBULANCE ──caller "Try again"──► FINDING_AMBULANCE
+caller cancels: FINDING / NO_AMBULANCE / ASSIGNED / ON_THE_WAY ──► CANCELLED
+ambulance cancels with a reason: ASSIGNED / ON_THE_WAY / AT_PICKUP ──► CANCELLED
+```
+
+Both cancels flip the booking first, then run the existing emergency cancel (pending hospital offer withdrawn, held bed released). Hospital stages (contacting → accepted → arrived) are derived from the linked emergency, not stored on the booking.
 
 ## 8. API Design
 
@@ -484,6 +531,27 @@ a conditional update `{ _id, status: 'PENDING' }`. Whoever writes first wins.
 | `POST /api/admin/verifications/hospitals/:id` | `{ decision: VERIFY\|REJECT, note? }` (note required to reject) → emits `verification:updated` to admins and the hospital room |
 | `POST /api/admin/verifications/ambulances/:id` | Same; unverified ambulances get `403 ACCOUNT_NOT_VERIFIED` on create emergency / request-hospital |
 
+**Bookings (public, no login)** — the tracking token is the only credential; a wrong token is `404`.
+
+| Method & path | Notes |
+|---|---|
+| `POST /api/bookings` | Per-IP limit (`BOOKING_RATE_LIMIT_PER_IP_PER_HOUR`), per-phone limit, one active booking per phone (`409 BOOKING_ALREADY_ACTIVE`), fake-report block (`403 PHONE_BLOCKED`). Returns `{ token, booking }` — the token only here |
+| `GET /api/bookings/track/:token` | Tracking view (never the phone): status, ambulance (vehicle, org, crew phone, live position, ETA/distance), hospital stage, `cancellation { by, reason, note }` |
+| `POST /api/bookings/track/:token/cancel` | Until the ambulance reaches the caller (`409 BOOKING_NOT_CANCELLABLE` at `AT_PICKUP`) |
+| `POST /api/bookings/track/:token/retry` | `NO_AMBULANCE` → new round |
+
+**Ambulance (DISPATCHER)**
+
+| Method & path | Notes |
+|---|---|
+| `POST /api/ambulance/duty` | `{ onDuty }` — verified ambulances only |
+| `PATCH /api/ambulance/profile` | `{ phone?, organization? }` only; any other field → 400 |
+| `GET /api/booking-offers?status=` | Own offers, with the booking incl. caller name/phone, pickup, notes, time, distance/ETA |
+| `POST /api/booking-offers/:id/accept` · `/reject` | Accept raises the emergency (pickup, urgency, mapped requirements; owner = this ambulance) and contacts the top hospital |
+| `POST /api/ambulance/bookings/:id/cancel` | `{ reason, note? }` (note required for `OTHER`); assigned ambulance only; `FAKE_OR_PRANK` also records a FakeReport |
+
+Additive response fields: `GET /api/auth/me` → `ambulance.{driverName, licenceNumber, phone, onDuty, locationAt}`; hospital-facing `ambulance {vehicleNumber, ambulanceType, organization, driverName, phone}` (RULES.md §6); `GET /api/emergencies/:id` (owner) → `booking` with caller, booking time and ambulance→pickup ETA; hospital request list → `emergency.condition` and, once accepted, `emergency.caller`.
+
 **Health:** `GET /api/health` → `{ success: true, data: { status: 'ok' } }` (public, for Render).
 
 ---
@@ -509,6 +577,7 @@ a conditional update `{ _id, status: 'PENDING' }`. Whoever writes first wins.
 | Event | Payload | Behaviour |
 |---|---|---|
 | `join:hospital` | `{}` | Re-joins own hospital room (after reconnect). Hospital ID taken from token |
+| `ambulance:location` | `{ lat, lng }` | On-duty ambulance GPS, stored at most once per `AMBULANCE_LOCATION_MIN_INTERVAL_SECONDS`; moves a booking to `ON_THE_WAY`/`AT_PICKUP`; ack `{ stored }` |
 | `join:dispatcher` | `{ emergencyId? }` | Re-joins own rooms; with `emergencyId`, joins `emergency:<id>` if owner/admin |
 | `emergency:create` | same as `POST /api/emergencies` | **Optional** thin wrapper → `emergencyService.create()`; ack `{ success, data \| code }` |
 | `hospital:respond` | `{ hospitalRequestId, action: 'ACCEPT' \| 'REJECT', reason? }` | **Optional** thin wrapper → same service as REST |
@@ -532,6 +601,12 @@ authorisation.
 | `reservation:created` | `emergency:<id>`, `dispatcher:<owner>`, `hospital:<id>`, `role:ADMIN` | `{ reservationId, bedId, bedLabel, hospitalId, expiresAt }` |
 | `reservation:expired` | same | `{ reservationId, bedId, emergencyId }` |
 | `reservation:released` | same | `{ reservationId, bedId, emergencyId, by }` |
+| `booking:updated` | `booking:<id>`, assigned ambulance's `dispatcher:<id>` | `{ bookingId, status }` — clients refetch |
+| `booking:offer` | `dispatcher:<ambulanceId>` | `{ offerId, bookingId, urgency, condition, distanceKm, etaMinutes, expiresAt, serverNow }` (no caller details; the card loads them via REST) |
+| `booking:offer-cancelled` | `dispatcher:<ambulanceId>` | `{ offerId, bookingId, reason }` |
+| `booking:ambulance-location` | `booking:<id>` | `{ bookingId, location, locationAt, etaMinutes, distanceKm }` — ETA recomputed server-side per fix |
+
+`hospital:request` additionally carries `ambulance {vehicleNumber, ambulanceType, organization, driverName, phone}`, only to the offered hospital's room. The booking room also receives `hospital:accepted/rejected/timeout`, `reservation:*` and a **trimmed** `emergency:updated` (`{ emergencyId, status, currentHospital }`, no audit entry).
 
 `serverNow` lets the client correct clock skew for the countdown.
 Event names live only in `constants/socketEvents.js` (both apps).
@@ -812,6 +887,12 @@ reservation in the DB.
 | `MATCH_CRITICAL_LOAD` | `95` | matching |
 | `MATCH_MAX_RADIUS_KM` | `50` | matching (hospitals loaded via `$geoNear`) |
 | `CONFIDENCE_TIMEOUT_WINDOW_MINUTES` | `30` | confidence downgrade window (§10.5) |
+| `BOOKING_OFFER_TIMEOUT_SECONDS` | `60` | ambulance accept window |
+| `AMBULANCE_LOCATION_MAX_AGE_SECONDS` / `AMBULANCE_LOCATION_MIN_INTERVAL_SECONDS` | `120` / `10` | dispatch freshness / server-side GPS throttle |
+| `BOOKING_RATE_LIMIT_PER_IP_PER_HOUR` / `BOOKING_RATE_LIMIT_PER_PHONE_PER_HOUR` | `10` / `5` | public booking abuse limits |
+| `BOOKING_PII_RETENTION_DAYS` | `30` | purge of closed bookings' personal fields |
+| `BOOKING_PICKUP_RADIUS_METERS` | `100` | "ambulance has reached the caller" |
+| `FAKE_REPORT_BLOCK_THRESHOLD` / `FAKE_REPORT_WINDOW_DAYS` / `FAKE_REPORT_BLOCK_HOURS` | `3` / `30` / `72` | fake-report blocking (TTL index uses the window) |
 | `AVG_AMBULANCE_SPEED_KMPH` | `30` | eta |
 | `ROAD_FACTOR` | `1.3` | eta |
 | `HOST` | `0.0.0.0` | server listen address |

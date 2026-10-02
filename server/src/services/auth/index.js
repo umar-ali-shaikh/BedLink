@@ -93,7 +93,12 @@ export async function describeUser(authUser) {
         vehicleNumber: a.vehicleNumber,
         ambulanceType: a.ambulanceType,
         organization: a.organization,
+        driverName: a.driverName ?? '',
+        licenceNumber: a.licenceNumber ?? '',
+        phone: user.phone ?? '',
         verificationNote: user.verificationNote ?? '',
+        onDuty: a.onDuty ?? false,
+        locationAt: a.locationAt ?? null,
       };
     }
   }

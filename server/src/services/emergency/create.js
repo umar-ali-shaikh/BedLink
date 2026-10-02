@@ -17,9 +17,14 @@ async function nextCaseRef() {
 
 /**
  * Create an emergency and run matching (ARCHITECTURE.md §1 "Emergency" flow). Does not
- * contact a hospital — the dispatcher does that with request-hospital.
+ * contact a hospital — the dispatcher does that with request-hospital. `bookingId` marks an
+ * emergency raised from a public booking, so its events also reach the caller's booking room.
  */
-export async function createEmergency({ patientLocation, requirements, urgency = DEFAULT_URGENCY }, user) {
+export async function createEmergency(
+  { patientLocation, requirements, urgency = DEFAULT_URGENCY },
+  user,
+  { bookingId = null } = {}
+) {
   const now = new Date();
   const emergency = await emergencyRepo.create({
     dispatcherId: user.id,
@@ -28,6 +33,7 @@ export async function createEmergency({ patientLocation, requirements, urgency =
     requirements,
     urgency,
     status: EMERGENCY_STATUS.SEARCHING,
+    bookingId,
   });
 
   await record(emergency._id, TIMELINE_EVENTS.REQUEST_CREATED, {

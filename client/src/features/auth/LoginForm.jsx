@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowRight, Eye, EyeOff, Lock } from 'lucide-react';
+import { AlertCircle, Ambulance, ArrowRight, Eye, EyeOff, Lock } from 'lucide-react';
 import { useAuth } from './useAuth';
 import { Button } from '../../components/Button';
 import { Logo } from '../../components/Logo';
@@ -75,8 +75,19 @@ export function LoginForm() {
       <div className="bg-surface border border-border rounded-lg shadow-card px-6 pt-6 pb-5">
         <Logo size="lg" />
         <p className="text-small text-text-muted mt-2">Find the right bed. Right now.</p>
+        <Link
+          to={ROUTES.BOOK}
+          data-testid="book-ambulance-cta"
+          className="mt-5 flex items-center justify-center gap-2 h-12 rounded-lg bg-danger text-text-inverse text-base font-semibold shadow-sm hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2"
+        >
+          <Ambulance className="w-5 h-5" aria-hidden /> Book an ambulance
+        </Link>
+        <p className="mt-1.5 text-center text-[12px] text-text-subtle">For patients and families — no login needed</p>
+        <div className="mt-5 flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-text-subtle" aria-hidden>
+          <span className="h-px flex-1 bg-border" /> Crew &amp; hospital sign in <span className="h-px flex-1 bg-border" />
+        </div>
 
-        <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
+        <form onSubmit={submit} className="mt-4 space-y-4" noValidate>
           <div>
             <label htmlFor="email" className="label">
               Email

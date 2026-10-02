@@ -24,3 +24,7 @@ process.env.JWT_SECRET = 'test-secret-test-secret-test-secret-1234';
 process.env.MONGO_TRANSACTIONS = 'true';
 process.env.OFFER_TIMEOUT_SECONDS = '120';
 process.env.LOG_LEVEL = 'error';
+// Booking limits: high by default so tests can create many; limit tests lower them at runtime.
+process.env.BOOKING_RATE_LIMIT_PER_IP_PER_HOUR = '1000';
+process.env.BOOKING_RATE_LIMIT_PER_PHONE_PER_HOUR = '100';
+process.env.BOOKING_OFFER_TIMEOUT_SECONDS = '60';

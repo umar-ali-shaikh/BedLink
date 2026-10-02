@@ -48,6 +48,7 @@ export async function rank({
   const hospitals = docs.map((h) => ({
     id: h._id.toString(),
     name: h.name,
+    ownership: h.ownership,
     coordinates: fromPoint(h.location),
     specialties: h.specialties ?? [],
     currentLoad: h.currentLoad,

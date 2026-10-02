@@ -96,6 +96,7 @@ export function rankHospitals({
     candidates.push({
       hospitalId: id,
       hospitalName: hospital.name,
+      ownership: hospital.ownership ?? null,
       coordinates: hospital.coordinates,
       score,
       confidence: confidence.level,
