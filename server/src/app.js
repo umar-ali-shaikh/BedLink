@@ -64,7 +64,9 @@ function serveClient(app, dir) {
   app.use('/assets', express.static(path.join(root, 'assets'), { immutable: true, maxAge: '1y', index: false }));
   app.use(express.static(root, { index: false, maxAge: '1h' }));
   app.use((req, res, next) => {
+    // Missing files (e.g. an old /assets chunk after a deploy) must 404, never get index.html.
     if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
+    if (req.path.startsWith('/assets/') || /\.[a-z0-9]+$/i.test(req.path)) return next();
     res.set('Cache-Control', 'no-cache');
     return res.sendFile(indexHtml);
   });
