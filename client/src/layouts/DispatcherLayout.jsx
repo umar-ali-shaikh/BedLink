@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutGrid, Plus, Siren } from 'lucide-react';
+import { LayoutGrid, Plus, Siren, UserRound } from 'lucide-react';
 import { AppShell } from './AppShell';
 import { useAuth } from '../features/auth/useAuth';
 import { ROUTES } from '../constants/routes';
@@ -12,6 +12,7 @@ import { IncomingBookingSlot } from '../features/bookingOffers/IncomingBookingSl
 const NAV = [
   { to: ROUTES.DISPATCHER_DASHBOARD, label: 'Overview', icon: LayoutGrid },
   { to: ROUTES.DISPATCHER_NEW_EMERGENCY, label: 'New emergency', icon: Siren },
+  { to: ROUTES.DISPATCHER_PROFILE, label: 'Profile', icon: UserRound },
 ];
 
 /** Ambulance panel (API role DISPATCHER). */

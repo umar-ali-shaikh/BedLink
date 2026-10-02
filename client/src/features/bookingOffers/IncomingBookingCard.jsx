@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Ambulance, Check, CircleX, MapPin } from 'lucide-react';
+import { Ambulance, Check, CircleX, Clock, MapPin, Phone, User } from 'lucide-react';
 import { bookingOffersApi } from '../booking/api';
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -14,6 +14,7 @@ import { qk } from '../../services/queryKeys';
 import { useSocket } from '../../socket/SocketContext';
 import { cn } from '../../utils/cn';
 import { formatDistance } from '../../utils/formatEta';
+import { formatClock } from '../../utils/formatRelative';
 
 const windowSeconds = (offer) => (offer?.offeredAt && offer?.expiresAt ? (new Date(offer.expiresAt) - new Date(offer.offeredAt)) / 1000 : undefined);
 const URGENCY_BAR = { CRITICAL: 'bg-danger', HIGH: 'bg-warning', MODERATE: 'bg-neutral-state' };
@@ -106,7 +107,25 @@ export function IncomingBookingCard({ offer, offsetMs = 0, onAnswering, onSettle
           <Ambulance className="w-5 h-5 text-primary inline-block align-[-4px] mr-1.5" aria-hidden />
           Pickup est. <strong className="tabular-nums">{offer.etaMinutes ?? '—'} min</strong> from you ({formatDistance(offer.distanceKm)})
         </p>
-        <p className="mt-1 text-small text-text-subtle">Caller name and number are shown after you accept.</p>
+        {booking.caller && (
+          <div className="mt-3 flex flex-col items-center gap-2" data-testid="offer-caller">
+            <p className="text-body text-text">
+              <User className="w-5 h-5 text-primary inline-block align-[-4px] mr-1.5" aria-hidden />
+              {booking.caller.name}
+            </p>
+            <a
+              href={`tel:${booking.caller.phone}`}
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-md border border-primary/40 bg-primary-soft text-small font-semibold text-primary"
+              aria-label={`Call the caller on ${booking.caller.phone}`}
+            >
+              <Phone className="w-4 h-4" aria-hidden /> Call {booking.caller.phone}
+            </a>
+          </div>
+        )}
+        <p className="mt-2 text-small text-text-subtle">
+          <Clock className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden />
+          Booked at {formatClock(booking.createdAt)}
+        </p>
       </div>
       <div className="px-5 pb-5">
         <Button variant="success" size="xl" className="w-full" icon={Check} onClick={() => accept.mutate()} isLoading={accept.isPending} disabled={busy || !isConnected}>

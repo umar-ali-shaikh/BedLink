@@ -47,6 +47,8 @@ export async function createAmbulance({
     ambulance: {
       vehicleNumber: `MH01AB${String(1000 + n)}`,
       ambulanceType: 'ALS',
+      driverName: `Driver ${n}`,
+      licenceNumber: `MH14201100${String(n).padStart(5, '0')}`,
       organization: 'Test Ambulance Trust',
       onDuty,
       location: hasPosition ? { lat, lng } : undefined,

@@ -5,6 +5,7 @@ export const emergencyRepo = {
   findById: (id, { session } = {}) => EmergencyRequest.findById(id).session(session ?? null),
   list: (filter = {}, { limit = 100 } = {}) =>
     EmergencyRequest.find(filter).sort({ createdAt: -1 }).limit(limit).select('-candidates -exclusions'),
+  findByIds: (ids, select) => EmergencyRequest.find({ _id: { $in: ids } }).select(select),
   idsByDispatcher: async (dispatcherId) =>
     (await EmergencyRequest.find({ dispatcherId }).select('_id').lean()).map((e) => e._id),
   count: (filter = {}) => EmergencyRequest.countDocuments(filter),

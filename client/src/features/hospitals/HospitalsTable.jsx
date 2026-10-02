@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { Card } from '../../components/Card';
 import { ResponsiveTable } from '../../components/ResponsiveTable';
 import { LoadBar } from '../../components/LoadBar';
+import { OwnershipBadge } from '../../components/OwnershipBadge';
 import { FreshnessIndicator } from '../../components/FreshnessIndicator';
 import { StatusIndicator } from '../../components/StatusIndicator';
 import { EmptyState } from '../../components/EmptyState';
@@ -33,6 +34,7 @@ export function HospitalsTable({ query, title = 'Hospitals', onRowClick, actions
       render: (h) => (
         <div className="min-w-0">
           <p className="font-semibold text-text truncate">{h.name}</p>
+          <OwnershipBadge ownership={h.ownership} className="my-0.5" />
           <p className="text-[12px] text-text-subtle truncate">{h.address ?? ''}</p>
         </div>
       ),

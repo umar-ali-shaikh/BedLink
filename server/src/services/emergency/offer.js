@@ -10,6 +10,8 @@ import { fromPoint } from '../../utils/geo.js';
 import { idOf } from '../../utils/ids.js';
 import { rank } from '../matching/index.js';
 import { emit, notify } from '../notification/index.js';
+import { userRepo } from '../../repositories/userRepo.js';
+import { crewView } from '../ambulance/view.js';
 import { loadManagedEmergency } from './access.js';
 import { emitEmergencyUpdated } from './events.js';
 import { concludeNoMatch } from './fallback.js';
@@ -95,11 +97,14 @@ export async function offerTo(emergency, candidate, { actor, automatic, now = ne
 
   scheduleOfferTimeout(offer._id, expiresAt);
 
+  const crew = crewView(await userRepo.findById(emergency.dispatcherId));
   emit(SERVER_EVENTS.HOSPITAL_REQUEST, [hospitalRoom(idOf(offer.hospitalId))], {
     hospitalRequestId: idOf(offer),
     emergencyId: idOf(emergency),
     requirements: requirementsOf(updated),
     urgency: updated.urgency,
+    // Who is coming: only ever sent to the hospital that was offered this emergency.
+    ambulance: crew,
     etaMinutes: candidate.etaMinutes,
     distanceKm: candidate.distanceKm,
     expiresAt,

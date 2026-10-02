@@ -71,7 +71,11 @@ export function useDutyLocationSharing() {
     // After a reconnect, push the newest fix straight away (still within the throttle).
     const onConnect = () => schedule();
     socket.on('connect', onConnect);
+    // A parked ambulance gets no new fixes, but the server only dispatches to positions younger than
+    // AMBULANCE_LOCATION_MAX_AGE_SECONDS: re-send the last fix each interval while the watch is alive.
+    const heartbeat = setInterval(schedule, intervalMs);
     return () => {
+      clearInterval(heartbeat);
       navigator.geolocation.clearWatch(watchId);
       socket.off('connect', onConnect);
       clearTimeout(timer.current);

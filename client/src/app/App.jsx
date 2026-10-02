@@ -23,6 +23,7 @@ const HospitalRequestsPage = lazy(() => import('../pages/hospital/HospitalReques
 const RegisterChoicePage = lazy(() => import('../pages/register/RegisterChoicePage').then((m) => ({ default: m.RegisterChoicePage })));
 const RegisterAmbulancePage = lazy(() => import('../pages/register/RegisterAmbulancePage').then((m) => ({ default: m.RegisterAmbulancePage })));
 const RegisterHospitalPage = lazy(() => import('../pages/register/RegisterHospitalPage').then((m) => ({ default: m.RegisterHospitalPage })));
+const AmbulanceProfilePage = lazy(() => import('../pages/dispatcher/AmbulanceProfilePage').then((m) => ({ default: m.AmbulanceProfilePage })));
 const HospitalProfilePage = lazy(() => import('../pages/hospital/HospitalProfilePage').then((m) => ({ default: m.HospitalProfilePage })));
 
 const BookingPage = lazy(() => import('../pages/booking/BookingPage').then((m) => ({ default: m.BookingPage })));
@@ -58,6 +59,7 @@ export default function App() {
             <Route path={ROUTES.DISPATCHER_DASHBOARD} element={<DispatcherDashboardPage />} />
             <Route path={ROUTES.DISPATCHER_NEW_EMERGENCY} element={<NewEmergencyPage />} />
             <Route path={ROUTES.DISPATCHER_EMERGENCY_DETAIL} element={<EmergencyDetailPage />} />
+            <Route path={ROUTES.DISPATCHER_PROFILE} element={<AmbulanceProfilePage />} />
           </Route>
 
           <Route element={guard([ROLES.HOSPITAL], <HospitalLayout />)}>

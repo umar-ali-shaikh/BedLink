@@ -14,6 +14,7 @@ afterAll(async () => {
   await stopTestDb();
 });
 
+let licenceSeq = 0;
 const ambulance = (over = {}) => ({
   name: 'Ravi Kumar',
   email: 'ravi@ambulance.test',
@@ -21,6 +22,9 @@ const ambulance = (over = {}) => ({
   phone: '+91 98765 43210',
   vehicleNumber: 'mh 01 ab 1234',
   ambulanceType: 'ALS',
+  driverName: 'Suresh Patil',
+  // Each registration needs its own licence (they are unique): state + RTO + year + 7-digit serial.
+  licenceNumber: `MH14 2011 ${String(++licenceSeq).padStart(7, '0')}`,
   organization: '108 Service',
   ...over,
 });
@@ -30,6 +34,7 @@ const hospitalBody = (over = {}, contact = {}) => ({
     name: 'Seaside Care Hospital',
     address: 'Marine Drive, Mumbai',
     coordinates: { lat: 19.08, lng: 72.88 },
+    ownership: 'PRIVATE',
     specialties: ['CARDIOLOGY', 'GENERAL_MEDICINE'],
     registrationNumber: 'mh/ce/2024/00123',
     hfrId: 'IN2710000123',

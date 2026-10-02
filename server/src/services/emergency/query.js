@@ -8,6 +8,9 @@ import { reservationRepo } from '../../repositories/reservationRepo.js';
 import { timelineRepo } from '../../repositories/timelineRepo.js';
 import { forbidden } from '../../utils/AppError.js';
 import { idOf, sameId } from '../../utils/ids.js';
+import { userRepo } from '../../repositories/userRepo.js';
+import { loadCrewViews, crewView } from '../ambulance/view.js';
+import { etaToPickup } from '../booking/track.js';
 import { ambulanceBookingView } from '../booking/views.js';
 import { isOwner, loadEmergency, wasContacted } from './access.js';
 
@@ -30,6 +33,7 @@ async function hospitalView(emergency, hospitalId) {
     demoPatientId: emergency.demoPatientId,
     requirements: emergency.requirements,
     urgency: emergency.urgency,
+    ambulance: crewView(await userRepo.findById(emergency.dispatcherId)),
     etaMinutes: latest?.matchSnapshot?.etaMinutes ?? null,
     distanceKm: latest?.matchSnapshot?.distanceKm ?? null,
     offers: offers.map((o) => o.toJSON()),
@@ -67,9 +71,19 @@ export async function getEmergency(id, user) {
     currentOffer: currentOffer?.toJSON() ?? null,
     reservation: reservation ? reservationJSON(reservation) : null,
     // Present when a public caller booked this ambulance: condition, pickup place and caller contact.
-    booking: booking ? ambulanceBookingView(booking, { revealCaller: true }) : null,
+    booking: booking ? await activeJobView(booking, emergency) : null,
     serverNow: new Date(),
   };
+}
+
+/** The crew's active job: caller contact, booking time, and distance/ETA from where the ambulance is now. */
+async function activeJobView(booking, emergency) {
+  const view = ambulanceBookingView(booking, { revealCaller: true });
+  const crew = await userRepo.findById(emergency.dispatcherId);
+  const position = crew?.ambulance?.location;
+  const pickup = view.pickup && { lat: view.pickup.lat, lng: view.pickup.lng };
+  const { etaMinutes, distanceKm } = etaToPickup(position && { lat: position.lat, lng: position.lng }, pickup);
+  return { ...view, etaMinutes, distanceKm, locationAt: position ? crew.ambulance.locationAt : null };
 }
 
 function reservationJSON(reservation) {
@@ -93,6 +107,9 @@ export async function listHospitalRequests(user, { statuses } = {}) {
   const reservations = acceptedIds.length ? await reservationRepo.findByHospitalRequestIds(acceptedIds) : [];
   const reservationByOffer = new Map(reservations.map((r) => [idOf(r.hospitalRequestId), reservationJSON(r)]));
 
+  // Hospital staff see who is coming (vehicle, driver, organisation, crew phone), only for their own offers.
+  const crews =
+    user.role === ROLES.HOSPITAL ? await loadCrewViews(offers.map((o) => o.emergencyId?.dispatcherId)) : new Map();
   const bookingIds = offers.map((o) => o.emergencyId?.bookingId).filter(Boolean);
   const bookings = bookingIds.length ? await bookingRepo.findByIds(bookingIds) : [];
   const bookingById = new Map(bookings.map((b) => [idOf(b), b]));
@@ -103,6 +120,8 @@ export async function listHospitalRequests(user, { statuses } = {}) {
     json.emergency = emergency?.requirements
       ? { requirements: emergency.requirements, urgency: emergency.urgency, demoPatientId: emergency.demoPatientId }
       : null;
+    if (json.emergency && user.role === ROLES.HOSPITAL)
+      json.emergency.ambulance = crews.get(idOf(emergency.dispatcherId)) ?? null;
     const booking = bookingById.get(idOf(emergency?.bookingId));
     if (json.emergency && booking) {
       json.emergency.condition = booking.condition;

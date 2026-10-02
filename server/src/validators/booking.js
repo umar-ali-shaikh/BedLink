@@ -1,7 +1,15 @@
 import { z } from 'zod';
 import { PHONE_PATTERN } from '../constants/ambulance.js';
-import { CONDITION_VALUES, MAX_BOOKING_NOTES_LENGTH, MAX_PATIENT_NAME_LENGTH } from '../constants/booking.js';
+import {
+  CANCEL_REASONS,
+  CANCEL_REASON_VALUES,
+  CONDITION_VALUES,
+  MAX_BOOKING_NOTES_LENGTH,
+  MAX_CANCEL_NOTE_LENGTH,
+  MAX_PATIENT_NAME_LENGTH,
+} from '../constants/booking.js';
 import { URGENCY_VALUES } from '../constants/emergency.js';
+import { phone } from './auth.js';
 import { idParams } from './common.js';
 
 /** Public booking form. Exactly these fields — nothing else is accepted or stored (RULES.md §9). */
@@ -36,3 +44,25 @@ export const locationPayload = z.strictObject({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
 });
+
+export const cancelBookingBody = z
+  .strictObject({
+    reason: z.enum(CANCEL_REASON_VALUES),
+    note: z.string().trim().max(MAX_CANCEL_NOTE_LENGTH).default(''),
+  })
+  .refine((b) => b.reason !== CANCEL_REASONS.OTHER || b.note.length >= 3, {
+    message: 'Describe the reason',
+    path: ['note'],
+  });
+
+export const cancelBookingSchema = { params: idParams, body: cancelBookingBody };
+
+/** Ambulance profile: only these two fields are editable (vehicle, driver, licence are verified). */
+export const ambulanceProfileBody = z
+  .strictObject({
+    phone: phone.optional(),
+    organization: z.string().trim().max(120).optional(),
+  })
+  .refine((b) => b.phone !== undefined || b.organization !== undefined, { message: 'Nothing to update' });
+
+export const ambulanceProfileSchema = { body: ambulanceProfileBody };

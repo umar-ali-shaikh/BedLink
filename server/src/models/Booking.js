@@ -2,8 +2,11 @@ import mongoose from 'mongoose';
 import {
   BOOKING_STATUS,
   BOOKING_STATUS_VALUES,
+  CANCEL_REASON_VALUES,
+  CANCELLED_BY,
   CONDITION_VALUES,
   MAX_BOOKING_NOTES_LENGTH,
+  MAX_CANCEL_NOTE_LENGTH,
 } from '../constants/booking.js';
 import { DEFAULT_URGENCY, URGENCY_VALUES } from '../constants/emergency.js';
 import { pointSchema } from './Hospital.js';
@@ -35,6 +38,10 @@ const bookingSchema = new mongoose.Schema(
     contactedAmbulanceIds: { type: [{ type: ObjectId, ref: 'User' }], default: [] },
     ambulanceId: { type: ObjectId, ref: 'User', default: null },
     emergencyId: { type: ObjectId, ref: 'EmergencyRequest', default: null },
+    /** Who cancelled and why (the caller's tracking page shows it). */
+    cancelledBy: { type: String, enum: [...Object.values(CANCELLED_BY), null], default: null },
+    cancelReason: { type: String, enum: [...CANCEL_REASON_VALUES, null], default: null },
+    cancelNote: { type: String, trim: true, maxlength: MAX_CANCEL_NOTE_LENGTH, default: '' },
     assignedAt: { type: Date, default: null },
     onTheWayAt: { type: Date, default: null },
     atPickupAt: { type: Date, default: null },

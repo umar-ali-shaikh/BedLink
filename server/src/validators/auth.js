@@ -1,6 +1,16 @@
 import { z } from 'zod';
-import { AMBULANCE_TYPE_VALUES, PHONE_PATTERN, VEHICLE_NUMBER_PATTERN } from '../constants/ambulance.js';
-import { HFR_ID_PATTERN, REGISTRATION_NUMBER_PATTERN, SPECIALTY_VALUES } from '../constants/hospital.js';
+import {
+  AMBULANCE_TYPE_VALUES,
+  LICENCE_NUMBER_PATTERN,
+  PHONE_PATTERN,
+  VEHICLE_NUMBER_PATTERN,
+} from '../constants/ambulance.js';
+import {
+  HFR_ID_PATTERN,
+  HOSPITAL_OWNERSHIP_VALUES,
+  REGISTRATION_NUMBER_PATTERN,
+  SPECIALTY_VALUES,
+} from '../constants/hospital.js';
 import { coordinates, enumList } from './common.js';
 
 export const loginSchema = {
@@ -45,6 +55,11 @@ export const registerAmbulanceSchema = {
         z.string().regex(VEHICLE_NUMBER_PATTERN, 'Enter a valid vehicle registration number, e.g. MH01AB1234')
       ),
       ambulanceType: z.enum(AMBULANCE_TYPE_VALUES),
+      driverName: z.string().trim().min(2, 'Enter the driver full name').max(100),
+      licenceNumber: z.preprocess(
+        strip,
+        z.string().regex(LICENCE_NUMBER_PATTERN, 'Driving licence number is 15 characters, e.g. MH1420110062821')
+      ),
       organization: z.string().trim().max(120).optional(),
     })
     .refine((b) => passwordOrGoogle(b, b.password), passwordRequired),
@@ -57,6 +72,7 @@ export const registerHospitalSchema = {
         name: z.string().trim().min(3, 'Hospital name must be at least 3 characters').max(120),
         address: z.string().trim().min(5, 'Enter the full address').max(300),
         coordinates,
+        ownership: z.enum(HOSPITAL_OWNERSHIP_VALUES, { error: 'Choose the hospital ownership' }),
         specialties: enumList(SPECIALTY_VALUES).default([]),
         registrationNumber: z.preprocess(
           (v) => (typeof v === 'string' ? v.trim().toUpperCase() : v),

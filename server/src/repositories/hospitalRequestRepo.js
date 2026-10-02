@@ -12,7 +12,7 @@ export const hospitalRequestRepo = {
     HospitalRequest.find(filter)
       .sort({ offeredAt: -1 })
       .limit(limit)
-      .populate('emergencyId', 'requirements urgency demoPatientId status reservationId bookingId'),
+      .populate('emergencyId', 'requirements urgency demoPatientId status reservationId bookingId dispatcherId'),
 
   /**
    * The single allowed transition PENDING → `to` (ARCHITECTURE.md §7.3). Whoever writes

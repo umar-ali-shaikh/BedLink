@@ -16,6 +16,12 @@ export const bookingOffersApi = {
   reject: (id) => api.post(`/booking-offers/${id}/reject`),
 };
 
+export const ambulanceApi = {
+  /** Cancel an assigned booking with a reason (FAKE_OR_PRANK counts against the caller's number). */
+  cancelBooking: (id, body) => api.post(`/ambulance/bookings/${id}/cancel`, body),
+  updateProfile: (body) => api.patch('/ambulance/profile', body),
+};
+
 export const dutyApi = {
   set: (onDuty) => api.post('/ambulance/duty', { onDuty }),
 };

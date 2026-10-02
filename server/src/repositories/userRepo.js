@@ -7,6 +7,8 @@ export const userRepo = {
   findByEmailWithPassword: (email) => User.findOne({ email: email.toLowerCase() }).select('+passwordHash'),
   existsByEmail: (email) => User.exists({ email: email.toLowerCase() }),
   existsByVehicle: (vehicleNumber) => User.exists({ 'ambulance.vehicleNumber': vehicleNumber }),
+  existsByLicence: (licenceNumber) => User.exists({ 'ambulance.licenceNumber': licenceNumber }),
+  findByIds: (ids) => User.find({ _id: { $in: ids } }),
   list: (filter = {}) => User.find(filter).sort({ role: 1, name: 1 }),
   create: (data) => User.create(data),
   updateById: (id, update) => User.findByIdAndUpdate(id, update, { returnDocument: 'after', runValidators: false }),

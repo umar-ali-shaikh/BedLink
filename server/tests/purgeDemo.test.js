@@ -24,6 +24,7 @@ describe('purgeDemoData', () => {
           name: 'Real Care Hospital',
           address: 'Real Road, Pune 411001',
           coordinates: { lat: 18.52, lng: 73.85 },
+          ownership: 'GOVERNMENT',
           specialties: [],
           registrationNumber: 'MH/PU/2025/0001',
           phone: '9876500000',
@@ -39,6 +40,8 @@ describe('purgeDemoData', () => {
       phone: '9876511111',
       vehicleNumber: 'MH12AB1234',
       ambulanceType: 'BLS',
+      driverName: 'Real Driver',
+      licenceNumber: 'MH12 2015 0000042',
     });
 
     const counts = await purgeDemoData();

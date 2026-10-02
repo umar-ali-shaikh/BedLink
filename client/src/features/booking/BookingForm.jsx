@@ -93,7 +93,7 @@ export function BookingForm({ activeToken }) {
       const fields = serverFieldErrors(err, (p) => (p.startsWith('pickup') ? 'pickup' : p));
       setErrors(fields);
       setFormError(
-        Object.keys(fields).length
+        Object.keys(fields).length && err.code !== 'PHONE_BLOCKED'
           ? ''
           : err.code === 'BOOKING_ALREADY_ACTIVE'
             ? 'This number already has an ambulance booking in progress.'

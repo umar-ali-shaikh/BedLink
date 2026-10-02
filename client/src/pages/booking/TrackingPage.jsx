@@ -15,7 +15,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
 import { StatusIndicator } from '../../components/StatusIndicator';
 import { useToast } from '../../components/Toast';
-import { BOOKING_STATUS as S, CONDITION_LABELS, LIVE_BOOKING_STATUSES } from '../../constants/booking';
+import { BOOKING_STATUS as S, CANCEL_REASON_FOR_CALLER, CONDITION_LABELS, LIVE_BOOKING_STATUSES } from '../../constants/booking';
 import { ROUTES } from '../../constants/routes';
 import { qk } from '../../services/queryKeys';
 import { errorMessage } from '../../services/api';
@@ -96,6 +96,14 @@ export function TrackingPage() {
         <p className="text-small text-text-muted mt-1">
           {CONDITION_LABELS[view.condition] ?? view.condition} · {view.pickup?.label}
         </p>
+        {view.status === S.CANCELLED && view.cancellation?.by === 'AMBULANCE' && (
+          <div className="mt-4 rounded-md border border-border bg-neutral-soft p-4" role="status" data-testid="cancellation-reason">
+            <p className="text-small font-semibold text-text">Cancelled by the ambulance crew</p>
+            <p className="text-small text-text mt-1">{CANCEL_REASON_FOR_CALLER[view.cancellation.reason] ?? CANCEL_REASON_FOR_CALLER.OTHER}</p>
+            {view.cancellation.note && <p className="text-small text-text-muted mt-1">“{view.cancellation.note}”</p>}
+            <p className="text-small text-text-muted mt-2">If you still need help, book again or call 112.</p>
+          </div>
+        )}
         {view.status === S.NO_AMBULANCE && (
           <div className="mt-4 rounded-md border border-danger/30 bg-danger-soft p-4" role="alert">
             <p className="text-small font-semibold text-danger">No ambulance is available near you right now.</p>

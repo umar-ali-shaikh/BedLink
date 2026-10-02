@@ -38,10 +38,10 @@ export const bookingRepo = {
       { returnDocument: 'after' }
     ),
   /** Emergency finished or was cancelled by the crew: close the booking that raised it. */
-  closeByEmergency: (emergencyId, status, now) =>
+  closeByEmergency: (emergencyId, status, now, extra = {}) =>
     Booking.findOneAndUpdate(
       { emergencyId, status: { $in: ACTIVE_BOOKING_STATUSES } },
-      { $set: { status, closedAt: now }, $unset: { activePhone: '' } },
+      { $set: { status, closedAt: now, ...extra }, $unset: { activePhone: '' } },
       { returnDocument: 'after' }
     ),
   /** Retention: blank the personal fields of bookings closed before `before`. Returns the count. */

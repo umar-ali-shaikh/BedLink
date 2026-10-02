@@ -4,14 +4,22 @@ import { Ambulance } from 'lucide-react';
 import { Field, PASSWORD_RULE, RegisterShell, serverFieldErrors } from '../../features/auth/RegisterShell';
 import { useAuth } from '../../features/auth/useAuth';
 import { Button } from '../../components/Button';
-import { AMBULANCE_TYPES, PHONE_PATTERN, VEHICLE_NUMBER_PATTERN, normalisePhone, normaliseVehicle } from '../../constants/ambulance';
+import {
+  AMBULANCE_TYPES,
+  LICENCE_NUMBER_PATTERN,
+  PHONE_PATTERN,
+  VEHICLE_NUMBER_PATTERN,
+  normaliseLicence,
+  normalisePhone,
+  normaliseVehicle,
+} from '../../constants/ambulance';
 import { ROUTES } from '../../constants/routes';
 import { errorMessage } from '../../services/api';
 import { cn } from '../../utils/cn';
 import { useGoogleSignup } from '../../features/auth/useGoogleSignup';
 import { GoogleSignupBlock } from '../../features/auth/GoogleSignupBlock';
 
-const EMPTY = { name: '', phone: '', email: '', password: '', confirm: '', vehicleNumber: '', ambulanceType: 'ALS', organization: '' };
+const EMPTY = { name: '', phone: '', email: '', password: '', confirm: '', vehicleNumber: '', ambulanceType: 'ALS', driverName: '', licenceNumber: '', organization: '' };
 
 function validate(f, google) {
   const e = {};
@@ -19,6 +27,8 @@ function validate(f, google) {
   if (!PHONE_PATTERN.test(normalisePhone(f.phone))) e.phone = 'Enter a valid 10-digit mobile number';
   if (!/^\S+@\S+\.\S+$/.test(f.email.trim())) e.email = 'Enter a valid email';
   if (!VEHICLE_NUMBER_PATTERN.test(normaliseVehicle(f.vehicleNumber))) e.vehicleNumber = 'e.g. MH01AB1234';
+  if (f.driverName.trim().length < 2) e.driverName = 'Enter the driver full name';
+  if (!LICENCE_NUMBER_PATTERN.test(normaliseLicence(f.licenceNumber))) e.licenceNumber = '15 characters, e.g. MH14 2011 0062821';
   if (!google) {
     const pw = PASSWORD_RULE(f.password);
     if (pw) e.password = pw;
@@ -52,6 +62,8 @@ export function RegisterAmbulancePage() {
         phone: normalisePhone(form.phone),
         vehicleNumber: normaliseVehicle(form.vehicleNumber),
         ambulanceType: form.ambulanceType,
+        driverName: form.driverName.trim(),
+        licenceNumber: normaliseLicence(form.licenceNumber),
         ...(form.organization.trim() ? { organization: form.organization.trim() } : {}),
       });
       navigate(ROUTES.DISPATCHER_DASHBOARD, { replace: true });
@@ -102,6 +114,14 @@ export function RegisterAmbulancePage() {
               </button>
             ))}
           </div>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Field id="driverName" label="Driver full name" error={errors.driverName} hint="The person driving; may differ from you">
+            {input('driverName', { autoComplete: 'off', placeholder: 'As on the driving licence' })}
+          </Field>
+          <Field id="licenceNumber" label="Driving licence number" error={errors.licenceNumber} hint="Checked by our team on Parivahan Sarathi">
+            {input('licenceNumber', { placeholder: 'MH14 2011 0062821', autoCapitalize: 'characters', autoComplete: 'off' })}
+          </Field>
         </div>
         <Field id="organization" label="Service / organisation" optional error={errors.organization}>
           {input('organization', { placeholder: 'e.g. 108 Emergency Service' })}

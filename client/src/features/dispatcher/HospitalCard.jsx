@@ -3,6 +3,7 @@ import { ArrowRight, Check, ChevronDown, Navigation, Sparkles } from 'lucide-rea
 import { ConfidenceBadge } from '../../components/ConfidenceBadge';
 import { FreshnessIndicator } from '../../components/FreshnessIndicator';
 import { Button } from '../../components/Button';
+import { OwnershipBadge } from '../../components/OwnershipBadge';
 import { formatDistance } from '../../utils/formatEta';
 import { cn } from '../../utils/cn';
 
@@ -44,6 +45,7 @@ export function HospitalCard({ candidate, matchedAt, isTop, isSelected, isCurren
             </span>
             <div className="min-w-0">
               <h3 className="text-h3 text-text break-words">{c.hospitalName}</h3>
+              <OwnershipBadge ownership={c.ownership} className="mt-1" />
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 {isTop && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-primary">

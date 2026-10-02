@@ -23,6 +23,10 @@ export const ERROR_CODES = Object.freeze({
     status: 409,
     message: 'The ambulance has already reached you, so this can no longer be cancelled',
   },
+  PHONE_BLOCKED: {
+    status: 403,
+    message: 'New bookings from this number are paused after repeated false-request reports',
+  },
   AMBULANCE_NOT_ON_DUTY: { status: 409, message: 'Go on duty before sharing your location' },
   GEOCODER_UNAVAILABLE: { status: 503, message: 'Address search is unavailable right now — try again shortly' },
   RATE_LIMITED: { status: 429, message: 'Too many requests, please slow down' },

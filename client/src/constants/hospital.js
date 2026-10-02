@@ -30,3 +30,13 @@ export const LOAD_PRESETS = [
 /** Mirrors server MATCH_CRITICAL_LOAD (VITE_MATCH_CRITICAL_LOAD). */
 export const CRITICAL_LOAD = config.criticalLoad;
 
+
+/** Who runs the hospital. Display only; mirrors server constants/hospital.js. Older hospitals have none. */
+export const OWNERSHIP = Object.freeze({ GOVERNMENT: 'GOVERNMENT', SEMI_GOVERNMENT: 'SEMI_GOVERNMENT', PRIVATE: 'PRIVATE' });
+export const OWNERSHIP_VALUES = Object.values(OWNERSHIP);
+export const OWNERSHIP_LABELS = Object.freeze({
+  GOVERNMENT: 'Government',
+  SEMI_GOVERNMENT: 'Semi-government',
+  PRIVATE: 'Private',
+});
+export const OWNERSHIP_NOT_SPECIFIED = 'Not specified';

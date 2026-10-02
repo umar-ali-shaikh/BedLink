@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import {
   DEFAULT_HOSPITAL_LOAD,
   HOSPITAL_STATUS,
+  HOSPITAL_OWNERSHIP_VALUES,
   HOSPITAL_STATUS_VALUES,
   SPECIALTY_VALUES,
   VERIFICATION_STATUS,
@@ -32,6 +33,8 @@ const hospitalSchema = new mongoose.Schema(
     specialties: { type: [{ type: String, enum: SPECIALTY_VALUES }], default: [] },
     currentLoad: { type: Number, min: 0, max: 100, default: DEFAULT_HOSPITAL_LOAD },
     status: { type: String, enum: HOSPITAL_STATUS_VALUES, default: HOSPITAL_STATUS.ACTIVE },
+    /** Display only. Hospitals registered before this field existed have none (shown as Not specified). */
+    ownership: { type: String, enum: HOSPITAL_OWNERSHIP_VALUES, default: undefined },
     lastAvailabilityUpdate: { type: Date, default: null },
 
     // Registration & verification (self-registered hospitals start PENDING).

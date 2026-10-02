@@ -46,5 +46,24 @@ export const URGENCY_OPTIONS = [
   { value: 'MODERATE', label: 'Moderate', hint: 'Needs care, stable' },
 ];
 
+/** Why a crew cancels a booking before pickup (values mirror the server's CANCEL_REASONS). */
+export const CANCEL_REASONS = [
+  { value: 'FAKE_OR_PRANK', label: 'Fake or prank call', hint: 'Counts against the caller\'s number' },
+  { value: 'CALLER_UNREACHABLE', label: 'Caller unreachable' },
+  { value: 'DUPLICATE', label: 'Duplicate booking' },
+  { value: 'PATIENT_ALREADY_TRANSPORTED', label: 'Patient already transported' },
+  { value: 'OTHER', label: 'Other', hint: 'Describe below' },
+];
+
+/** What the caller reads on the tracking page when the ambulance cancelled. */
+export const CANCEL_REASON_FOR_CALLER = Object.freeze({
+  FAKE_OR_PRANK: 'The ambulance crew reported this as a false request.',
+  CALLER_UNREACHABLE: 'The crew could not reach you on the phone number you gave.',
+  DUPLICATE: 'The crew found this was a duplicate of another booking.',
+  PATIENT_ALREADY_TRANSPORTED: 'The crew found the patient was already taken to a hospital.',
+  OTHER: 'The crew cancelled this booking.',
+});
+
+export const MAX_CANCEL_NOTE_LENGTH = 200;
 export const MAX_NOTES_LENGTH = 300;
 export const MAX_NAME_LENGTH = 80;

@@ -68,7 +68,7 @@ export function useHospitalRealtime() {
         showToast({
           type: 'warning',
           title: `New ${payload.urgency?.toLowerCase() ?? ''} request`,
-          message: `Ambulance est. ${formatEta(payload.etaMinutes)} away — respond within 2 minutes.`,
+          message: `${payload.ambulance?.vehicleNumber ?? 'Ambulance'} est. ${formatEta(payload.etaMinutes)} away — respond within 2 minutes.`,
         });
         break;
       case SOCKET_EVENTS.HOSPITAL_REQUEST_CANCELLED:

@@ -72,6 +72,12 @@ deploy — the routes are in the same SPA and API — but check these settings:
 | `BOOKING_PII_RETENTION_DAYS` | `30` | closed bookings lose name, phone, notes and pickup after this long |
 | `BOOKING_PICKUP_RADIUS_METERS` | `100` | distance at which the ambulance "has reached" the caller |
 
+| `FAKE_REPORT_BLOCK_THRESHOLD` | `3` | `FAKE_OR_PRANK` reports on one number that trigger a block… |
+| `FAKE_REPORT_WINDOW_DAYS` | `30` | …counted over this many days; reports are TTL-deleted after it (index `fake_report_ttl`; to change the window on an existing database drop that index and restart) |
+| `FAKE_REPORT_BLOCK_HOURS` | `72` | …and the number is refused for this long after the latest report |
+
+Registration now also needs, from users: ambulance driver name + 15-character driving licence (unique) and hospital ownership. Existing accounts/hospitals without them keep working (hospitals show "Not specified"); nothing is migrated.
+
 Client (`VITE_*`, build time): `VITE_AMBULANCE_LOCATION_INTERVAL_SECONDS` (default `10`, keep it at
 or above the server minimum). Ambulances share GPS only while **On duty** and need the browser's
 location permission over **HTTPS** (browsers refuse GPS on plain http except `localhost`).

@@ -37,6 +37,7 @@ export function offerView(offer) {
     expiresAt: offer.expiresAt,
     distanceKm: offer.distanceKm,
     etaMinutes: offer.etaMinutes,
-    booking: booking?.condition ? ambulanceBookingView(booking) : null,
+    // The offered ambulance sees who is calling right away (name, phone, pickup, notes).
+    booking: booking?.condition ? ambulanceBookingView(booking, { revealCaller: true }) : null,
   };
 }

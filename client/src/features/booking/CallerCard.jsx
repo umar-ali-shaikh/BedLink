@@ -1,8 +1,10 @@
 import React from 'react';
-import { MapPin, Phone, User } from 'lucide-react';
+import { Clock, MapPin, Navigation, Phone, User } from 'lucide-react';
 import { Card } from '../../components/Card';
 import { StatusIndicator } from '../../components/StatusIndicator';
 import { CONDITION_LABELS } from '../../constants/booking';
+import { formatDistance, formatEta } from '../../utils/formatEta';
+import { formatClock } from '../../utils/formatRelative';
 
 /** Who booked this ambulance (public booking): shown to the crew that accepted it. */
 export function CallerCard({ booking }) {
@@ -27,6 +29,16 @@ export function CallerCard({ booking }) {
       ) : (
         <p className="mt-3 text-small text-text-subtle">Caller details were removed after the retention period.</p>
       )}
+      <p className="mt-2 text-small text-text-muted inline-flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="inline-flex items-center gap-1.5">
+          <Clock className="w-4 h-4 text-text-subtle" aria-hidden /> Booked at {formatClock(booking.createdAt)}
+        </span>
+        {booking.etaMinutes != null && (
+          <span className="inline-flex items-center gap-1.5" data-testid="job-eta">
+            <Navigation className="w-4 h-4 text-text-subtle" aria-hidden /> Pickup est. {formatEta(booking.etaMinutes)} from you ({formatDistance(booking.distanceKm)})
+          </span>
+        )}
+      </p>
       {booking.pickup?.label && (
         <p className="mt-2 text-small text-text-muted inline-flex items-start gap-1.5">
           <MapPin className="w-4 h-4 text-text-subtle shrink-0 mt-0.5" aria-hidden /> {booking.pickup.label}

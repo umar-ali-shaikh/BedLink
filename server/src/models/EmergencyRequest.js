@@ -22,6 +22,7 @@ const candidateSchema = new mongoose.Schema(
   {
     hospitalId: { type: ObjectId, ref: 'Hospital', required: true },
     hospitalName: String,
+    ownership: String,
     coordinates: { lat: Number, lng: Number },
     rank: Number,
     score: Number,

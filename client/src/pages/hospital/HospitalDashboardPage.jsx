@@ -118,6 +118,7 @@ export function HospitalDashboardPage() {
                 key={r.id}
                 reservation={r}
                 compact
+                crew={r.ambulance}
                 caller={accepted.data?.requests.find((o) => o.reservation?.id === r.id)?.emergency?.caller}
                 actions={
                   <ReservationActions

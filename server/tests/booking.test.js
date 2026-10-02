@@ -275,7 +275,7 @@ describe('dispatch to ambulances', () => {
     expect(await EmergencyRequest.countDocuments()).toBe(0);
   });
 
-  it("only the offered ambulance can answer, and offers list holds no caller's phone", async () => {
+  it('only the offered ambulance can answer, and offers list shows the caller to the offered ambulance only', async () => {
     const near = await createAmbulance(NEAR);
     const other = await createAmbulance(FAR);
     const { booking } = await book();
@@ -294,7 +294,12 @@ describe('dispatch to ambulances', () => {
       urgency: 'CRITICAL',
       notes: 'Blue gate, ground floor',
     });
-    expect(JSON.stringify(list.body)).not.toMatch(/98765|Test Caller|caller|phone/i);
+    // The offered ambulance sees who is calling right away (name, phone, pickup, notes, booking time).
+    expect(item.booking.caller).toMatchObject({ name: 'Test Caller' });
+    expect(item.booking.caller.phone).toMatch(/^\+91\d{10}$/);
+    expect(item.booking.createdAt).toBeTruthy();
+    expect(item.distanceKm).toBeGreaterThan(0);
+    expect(item.etaMinutes).toBeGreaterThan(0);
   });
 
   it('refuses unverified ambulances and non-ambulance users', async () => {
@@ -631,7 +636,6 @@ describe('privacy', () => {
     const admin = await loginAs('admin@bedlink.demo');
     const bodies = [
       (await crew.get('/api/emergencies')).body,
-      (await crew.get('/api/booking-offers')).body,
       (await staff.get('/api/hospital-requests')).body,
       (await admin.get('/api/emergencies')).body,
       (await admin.get('/api/admin/verifications/ambulances?status=ALL')).body,

@@ -127,6 +127,17 @@ Everything is configured by env (`server/.env.example`, `client/.env.example`). 
 Render → New → Blueprint → this repo (`render.yaml`: one service serving API + app on one URL).
 Details and the Vercel + Render option: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
+## Panels
+
+| Panel | Route | Who |
+|---|---|---|
+| Public booking | `/book`, `/track/:token` | Patients/families — no login; the tracking link is the credential |
+| Ambulance | `/ambulance/*` (incl. `/ambulance/profile`) | Verified crews: go on duty, answer bookings, raise emergencies |
+| Hospital | `/hospital/*` | Verified staff: answer requests (they see the vehicle, driver and a call link) |
+| Admin verification desk | `/admin/verifications` | Approves ambulances (driver + licence, Parivahan Sarathi link) and hospitals (ownership badge) |
+
+Booking, GPS-sharing and fake-report settings are env-driven — see `server/.env.example` and `docs/DEPLOYMENT.md`.
+
 ## Data
 
 There is no demo or sample data in the app: everything comes from MongoDB — hospitals and

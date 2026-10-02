@@ -68,6 +68,21 @@ export const CONDITION_REQUIREMENTS = Object.freeze({
   [CONDITIONS.OTHER]: { bedType: BED_TYPES.GENERAL, equipment: [], specialties: [] },
 });
 
+/** Why an ambulance cancels a booking before pickup. FAKE_OR_PRANK counts against the caller's phone. */
+export const CANCEL_REASONS = Object.freeze({
+  FAKE_OR_PRANK: 'FAKE_OR_PRANK',
+  CALLER_UNREACHABLE: 'CALLER_UNREACHABLE',
+  DUPLICATE: 'DUPLICATE',
+  PATIENT_ALREADY_TRANSPORTED: 'PATIENT_ALREADY_TRANSPORTED',
+  OTHER: 'OTHER',
+});
+
+export const CANCEL_REASON_VALUES = Object.freeze(Object.values(CANCEL_REASONS));
+
+export const CANCELLED_BY = Object.freeze({ CALLER: 'CALLER', AMBULANCE: 'AMBULANCE' });
+
+export const MAX_CANCEL_NOTE_LENGTH = 200;
+
 export const MAX_BOOKING_NOTES_LENGTH = 300;
 export const MAX_PATIENT_NAME_LENGTH = 80;
 

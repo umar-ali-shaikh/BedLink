@@ -107,6 +107,10 @@ export async function trackingView(booking) {
     onTheWayAt: booking.onTheWayAt,
     atPickupAt: booking.atPickupAt,
     closedAt: booking.closedAt,
+    cancellation:
+      booking.status === BOOKING_STATUS.CANCELLED
+        ? { by: booking.cancelledBy, reason: booking.cancelReason, note: booking.cancelNote }
+        : null,
     cancellable: USER_CANCELLABLE_BOOKING_STATUSES.includes(booking.status),
     retryable: booking.status === BOOKING_STATUS.NO_AMBULANCE,
     ambulance,

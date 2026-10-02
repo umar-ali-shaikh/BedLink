@@ -5,6 +5,7 @@ import { AppError } from '../../utils/AppError.js';
 import { toPoint } from '../../utils/geo.js';
 import { logger } from '../../utils/logger.js';
 import { offerToNextAmbulance } from './dispatch.js';
+import { assertPhoneNotBlocked } from './fakeReports.js';
 import { generateTrackingToken, hashTrackingToken } from './token.js';
 import { trackingView } from './track.js';
 
@@ -27,6 +28,7 @@ export async function createBooking({ patientName, phone, pickup, notes, conditi
   const normalised = normalisePhone(phone);
   if (!normalised)
     throw new AppError('VALIDATION_ERROR', undefined, undefined, [{ path: 'phone', message: 'Invalid phone number' }]);
+  await assertPhoneNotBlocked(normalised, now);
   if (await bookingRepo.findActiveByPhone(normalised)) throw alreadyActive();
   const recent = await bookingRepo.countCreatedSince(normalised, new Date(now.getTime() - HOUR_MS));
   if (recent >= env.BOOKING_RATE_LIMIT_PER_PHONE_PER_HOUR) throw new AppError('RATE_LIMITED');

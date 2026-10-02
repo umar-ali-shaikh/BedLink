@@ -12,4 +12,6 @@ export const acceptOffer = async (req, res) =>
 export const rejectOffer = async (req, res) =>
   ok(res, await bookingService.rejectBookingOffer(req.params.id, req.user));
 
+export const cancelByAmbulance = async (req, res) =>
+  ok(res, await bookingService.cancelBookingByAmbulance(req.params.id, req.user, req.body));
 export const setDuty = async (req, res) => ok(res, await bookingService.setDuty(req.user, req.body.onDuty));

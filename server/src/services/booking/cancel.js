@@ -1,4 +1,4 @@
-import { BOOKING_STATUS, USER_CANCELLABLE_BOOKING_STATUSES } from '../../constants/booking.js';
+import { BOOKING_STATUS, CANCELLED_BY, USER_CANCELLABLE_BOOKING_STATUSES } from '../../constants/booking.js';
 import { OFFER_STATUS } from '../../constants/emergency.js';
 import { ambulanceOfferRepo } from '../../repositories/ambulanceOfferRepo.js';
 import { bookingRepo } from '../../repositories/bookingRepo.js';
@@ -24,7 +24,7 @@ export async function cancelBooking(token, now = new Date()) {
   const cancelled = await bookingRepo.transition(
     booking._id,
     USER_CANCELLABLE_BOOKING_STATUSES,
-    { status: BOOKING_STATUS.CANCELLED, closedAt: now, currentOfferId: null },
+    { status: BOOKING_STATUS.CANCELLED, closedAt: now, currentOfferId: null, cancelledBy: CANCELLED_BY.CALLER },
     { unset: ['activePhone'] }
   );
   if (!cancelled) throw new AppError('BOOKING_NOT_CANCELLABLE');

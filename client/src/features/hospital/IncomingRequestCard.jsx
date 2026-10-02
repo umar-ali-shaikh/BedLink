@@ -5,6 +5,7 @@ import { hospitalRequestsApi } from './api';
 import { reservationsApi } from '../reservations/api';
 import { RejectReasonModal } from './RejectReasonModal';
 import { Button } from '../../components/Button';
+import { CrewContact } from './CrewContact';
 import { CountdownTimer } from '../../components/CountdownTimer';
 import { useToast } from '../../components/Toast';
 import { useSocket } from '../../socket/SocketContext';
@@ -115,7 +116,7 @@ export function IncomingRequestCard({ request, offsetMs = 0, onAnswering, onSett
           <Ambulance className="w-5 h-5 text-primary inline-block align-[-4px] mr-1.5" aria-hidden />
           Ambulance est. <strong className="tabular-nums">{snap.etaMinutes ?? '—'} min</strong> away ({formatDistance(snap.distanceKm)})
         </p>
-        <p className="mt-1 text-small text-text-subtle">Patient ref {request.emergency?.demoPatientId ?? '—'}</p>
+        <CrewContact crew={request.emergency?.ambulance} className="mt-3" />
       </div>
       <div className="px-5 pb-5">
         <Button variant="success" size="xl" className="w-full" icon={Check} onClick={() => accept.mutate()} isLoading={accept.isPending} disabled={busy || !isConnected}>
