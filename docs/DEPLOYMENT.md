@@ -18,7 +18,8 @@ put no secrets in `VITE_*`.
 1. **MongoDB Atlas** cluster (free tier is a replica set → `MONGO_TRANSACTIONS=true`).
    Network access: allow your host's egress IPs (or `0.0.0.0/0` for a hackathon).
 2. A `JWT_SECRET` of 32+ random characters (`openssl rand -hex 32`).
-3. Seed demo data once, from your machine, pointing at Atlas:
+3. Demo data: either set `SEED_DEMO_ON_EMPTY=true` on the server (loads it at startup only
+   while the database has no users and no hospitals — safe to leave on), or seed from your machine:
    `cd server && MONGO_URI=... JWT_SECRET=... npm run seed`
    (with `NODE_ENV=production` it refuses unless `SEED_ALLOW_PRODUCTION=true` — it wipes the DB).
 

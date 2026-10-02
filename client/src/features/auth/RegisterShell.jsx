@@ -51,7 +51,9 @@ export function Field({ id, label, error, hint, optional, children }) {
 export function serverFieldErrors(err, pathToField = (p) => p) {
   const out = {};
   (err?.details ?? []).forEach((d) => {
-    const key = pathToField(Array.isArray(d.path) ? d.path.join('.') : String(d.path ?? ''));
+    // Validation errors come as `body.hospital.name`; business errors as `hospital.name`.
+    const raw = (Array.isArray(d.path) ? d.path.join('.') : String(d.path ?? '')).replace(/^body\./, '');
+    const key = pathToField(raw);
     if (key && !out[key]) out[key] = d.message;
   });
   return out;

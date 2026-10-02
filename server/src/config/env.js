@@ -48,6 +48,11 @@ const envSchema = z.object({
   HOSPITAL_AUTO_VERIFY: bool.default(false),
   /** Registration attempts per IP per hour. */
   REGISTER_RATE_LIMIT_PER_HOUR: positiveInt.default(10),
+  /**
+   * Load the demo dataset at startup, but only when the database has no users and no
+   * hospitals (a fresh Atlas cluster). Never touches a database that has data.
+   */
+  SEED_DEMO_ON_EMPTY: bool.default(false),
   /** `npm run seed` wipes the database; in production it refuses unless this is true. */
   SEED_ALLOW_PRODUCTION: bool.default(false),
 
