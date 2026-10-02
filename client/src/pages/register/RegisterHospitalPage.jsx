@@ -125,7 +125,7 @@ export function RegisterHospitalPage() {
     }
     setBusy(true);
     try {
-      const user = await register('hospital', {
+      await register('hospital', {
         hospital: {
           name: form.name.trim(),
           address: form.address.trim(),
@@ -139,7 +139,7 @@ export function RegisterHospitalPage() {
         contact: { name: form.contactName.trim(), email: form.email.trim(), ...(google ? {} : { password: form.password }) },
         ...(google ? { googleCredential: google.credential } : {}),
       });
-      navigate(user.emailVerified === false ? ROUTES.VERIFY_EMAIL : ROUTES.HOSPITAL_BEDS, { replace: true });
+      navigate(ROUTES.HOSPITAL_BEDS, { replace: true });
     } catch (err) {
       const fields = serverFieldErrors(err, (p) => FIELD[p] ?? p);
       setErrors(fields);

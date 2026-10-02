@@ -86,18 +86,10 @@ Two panels with public self-registration (`/register`), plus an admin verificati
 The admin panel is only for verification (below). The login page has one-click demo account buttons (hide them with
 `VITE_SHOW_DEMO_ACCOUNTS=false`).
 
-### Email verification & Google sign-in
-
-After sign-up, users get a **6-digit code by email** and must enter it (`/verify-email`)
-before their panel opens; every role-protected API returns `403 EMAIL_NOT_VERIFIED` and the
-socket refuses them until then. Codes expire after 15 minutes, 5 wrong tries burn a code,
-resend has a 60 s cooldown. Mail goes through **Resend** (`RESEND_API_KEY`, HTTPS — works on
-Render's free tier) or any **SMTP** server (`SMTP_HOST`…); with neither, the code is written
-to the server log. `EMAIL_VERIFICATION=off` disables the step.
+### Google sign-in
 
 **Sign in / sign up with Google** appears when the server has `GOOGLE_CLIENT_ID` (a Web OAuth
-client whose *Authorized JavaScript origins* include your client URL). A Google email is
-already verified, so no code or password is needed. Signing in with a Google email that has
+client whose *Authorized JavaScript origins* include your client URL). No password is needed. Signing in with a Google email that has
 no account sends the user to registration, prefilled; signing in with the Google account of
 an existing email account links the two.
 

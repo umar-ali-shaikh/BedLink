@@ -20,14 +20,6 @@ export const registerLimiter = rateLimit({
   limit: () => env.REGISTER_RATE_LIMIT_PER_HOUR,
 });
 
-/** Email code send/verify: 10 per 10 minutes per user. */
-export const emailLimiter = rateLimit({
-  ...base,
-  windowMs: 10 * 60_000,
-  limit: 10,
-  keyGenerator: (req) => (req.user ? `user:${req.user.id}` : ipKeyGenerator(req.ip)),
-});
-
 /** Everything: 300/min/IP. */
 export const globalLimiter = rateLimit({ ...base, limit: 300 });
 

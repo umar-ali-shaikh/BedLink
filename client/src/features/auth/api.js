@@ -8,6 +8,4 @@ export const authApi = {
   registerHospital: (body) => api.post('/auth/register/hospital', body),
   config: () => api.get('/auth/config'),
   google: (credential) => api.post('/auth/google', { credential }),
-  sendEmailCode: () => api.post('/auth/email/send'),
-  verifyEmail: (code) => api.post('/auth/email/verify', { code }),
 };

@@ -52,7 +52,6 @@ export function LoginForm() {
   };
 
   const goHome = (user) => {
-    if (user.emailVerified === false) return navigate(ROUTES.VERIFY_EMAIL, { replace: true });
     const home = HOME_BY_ROLE[user.role];
     const from = location.state?.from?.pathname;
     const prefix = home.split('/')[1];

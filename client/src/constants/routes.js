@@ -6,7 +6,6 @@ export const ROUTES = Object.freeze({
   REGISTER: '/register',
   REGISTER_AMBULANCE: '/register/ambulance',
   REGISTER_HOSPITAL: '/register/hospital',
-  VERIFY_EMAIL: '/verify-email',
   DISPATCHER_DASHBOARD: '/ambulance/dashboard',
   DISPATCHER_NEW_EMERGENCY: '/ambulance/emergency/new',
   DISPATCHER_EMERGENCY_DETAIL: '/ambulance/emergency/:id',

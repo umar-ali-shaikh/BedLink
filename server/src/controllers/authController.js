@@ -1,6 +1,5 @@
 import { AUTH_COOKIE_NAME, authCookieOptions } from '../config/cookie.js';
 import { describeUser, login as loginUser, loginWithGoogle } from '../services/auth/index.js';
-import { sendVerificationCode, verifyEmailCode } from '../services/auth/emailVerification.js';
 import { googleEnabled } from '../services/auth/google.js';
 import { env } from '../config/env.js';
 import {
@@ -45,10 +44,6 @@ export async function google(req, res) {
 export function config(_req, res) {
   return ok(res, {
     googleClientId: googleEnabled() ? (env.GOOGLE_CLIENT_ID ?? null) : null,
-    emailVerification: env.EMAIL_VERIFICATION,
     registrationEnabled: env.REGISTRATION_ENABLED,
   });
 }
-
-export const sendEmailCode = async (req, res) => ok(res, await sendVerificationCode(req.user.id));
-export const verifyEmail = async (req, res) => ok(res, await verifyEmailCode(req.user.id, req.body.code));

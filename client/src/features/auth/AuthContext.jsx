@@ -17,13 +17,9 @@ const AuthContext = createContext({
 /** Only ambulance (DISPATCHER) and hospital accounts have a panel in this app. */
 export const UNSUPPORTED_ROLE = 'UNSUPPORTED_ROLE';
 
-/**
- * (Re)connect so the handshake carries the fresh cookie and the server joins our rooms.
- * Accounts with an unconfirmed email are refused by the socket server, so wait for that.
- */
-function connectSocket(user) {
+/** (Re)connect so the handshake carries the fresh cookie and the server joins our rooms. */
+function connectSocket() {
   if (socket.connected) socket.disconnect();
-  if (user?.emailVerified === false) return;
   socket.connect();
 }
 
@@ -40,7 +36,7 @@ export function AuthProvider({ children }) {
         if (cancelled) return;
         if (!PANEL_ROLES.includes(data.user.role)) return authApi.logout().catch(() => {});
         setUser(data.user);
-        connectSocket(data.user);
+        connectSocket();
         return undefined;
       })
       .catch(() => !cancelled && setUser(null))
@@ -65,7 +61,7 @@ export function AuthProvider({ children }) {
       throw { code: UNSUPPORTED_ROLE, message: 'This account has no panel here. Sign in with an ambulance or hospital account.' };
     }
     setUser(data.user);
-    connectSocket(data.user);
+    connectSocket();
     return data.user;
   }, []);
 
@@ -81,13 +77,10 @@ export function AuthProvider({ children }) {
   /** Google Identity Services credential → sign in (throws GOOGLE_ACCOUNT_NOT_FOUND for new emails). */
   const loginWithGoogle = useCallback(async (credential) => startSession(await authApi.google(credential)), [startSession]);
 
-  /** Re-read /auth/me (e.g. to pick up a verification result). Connects the socket once the email is confirmed. */
+  /** Re-read /auth/me (e.g. to pick up an admin verification decision). */
   const refreshUser = useCallback(async () => {
     const data = await authApi.me();
-    setUser((prev) => {
-      if (prev?.emailVerified === false && data.user.emailVerified) connectSocket(data.user);
-      return data.user;
-    });
+    setUser(data.user);
     return data.user;
   }, []);
 

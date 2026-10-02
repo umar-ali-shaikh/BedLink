@@ -22,7 +22,6 @@ export function ProtectedRoute({ children, allowedRoles = [] }) {
 
   if (isLoading) return <FullPageLoader />;
   if (!user) return <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />;
-  if (user.emailVerified === false) return <Navigate to={ROUTES.VERIFY_EMAIL} replace />;
   if (allowedRoles.length && !allowedRoles.includes(user.role)) {
     return <Navigate to={HOME_BY_ROLE[user.role] ?? ROUTES.LOGIN} replace />;
   }

@@ -45,7 +45,7 @@ export function RegisterAmbulancePage() {
     if (Object.keys(found).length) return;
     setBusy(true);
     try {
-      const user = await register('ambulance', {
+      await register('ambulance', {
         name: form.name.trim(),
         email: form.email.trim(),
         ...(google ? { googleCredential: google.credential } : { password: form.password }),
@@ -54,7 +54,7 @@ export function RegisterAmbulancePage() {
         ambulanceType: form.ambulanceType,
         ...(form.organization.trim() ? { organization: form.organization.trim() } : {}),
       });
-      navigate(user.emailVerified === false ? ROUTES.VERIFY_EMAIL : ROUTES.DISPATCHER_DASHBOARD, { replace: true });
+      navigate(ROUTES.DISPATCHER_DASHBOARD, { replace: true });
     } catch (err) {
       const fields = serverFieldErrors(err);
       setErrors(fields);

@@ -12,7 +12,6 @@ import { signToken } from './token.js';
 import crypto from 'node:crypto';
 import { User } from '../../models/index.js';
 import { emitVerificationUpdate } from '../verification/index.js';
-import { sendFirstCode } from './emailVerification.js';
 import { verifyGoogleCredential } from './google.js';
 
 const duplicate = (path, message) => new AppError('DUPLICATE_RESOURCE', message, undefined, [{ path, message }]);
@@ -21,11 +20,7 @@ function assertEnabled() {
   if (!env.REGISTRATION_ENABLED) throw new AppError('FORBIDDEN', 'Registration is closed. Contact the BedLink team.');
 }
 
-/**
- * Login credentials for a new account. With a Google credential the email is already proven
- * (no code needed) and a password is optional; otherwise the email must be confirmed with a code
- * unless EMAIL_VERIFICATION=off.
- */
+/** Login credentials for a new account: a password, or a Google credential (password optional). */
 async function credentialsFor({ email, password, googleCredential }, emailPath) {
   if (googleCredential) {
     const google = await verifyGoogleCredential(googleCredential);
@@ -40,10 +35,9 @@ async function credentialsFor({ email, password, googleCredential }, emailPath) 
     return {
       passwordHash: await hashPassword(password ?? crypto.randomBytes(32).toString('hex')),
       googleId: google.googleId,
-      emailVerified: true,
     };
   }
-  return { passwordHash: await hashPassword(password), emailVerified: env.EMAIL_VERIFICATION === 'off' };
+  return { passwordHash: await hashPassword(password) };
 }
 
 async function session(userDoc) {
@@ -97,7 +91,6 @@ export async function registerAmbulance({
       verificationNote: env.AMBULANCE_AUTO_VERIFY ? 'Automatically verified (AMBULANCE_AUTO_VERIFY)' : '',
     });
     logger.info('register.ambulance', { userId: user._id.toString() });
-    if (!user.emailVerified) await sendFirstCode(user._id);
     emitVerificationUpdate({ kind: 'ambulance', id: user._id.toString(), status: user.verificationStatus });
     return session(user);
   } catch (err) {
@@ -151,7 +144,6 @@ export async function registerHospital({ hospital, contact, googleCredential }) 
       hospitalId: created._id,
       ...credentials,
     });
-    if (!user.emailVerified) await sendFirstCode(user._id);
     logger.info('register.hospital', { hospitalId: created._id.toString(), verified });
     emitVerificationUpdate({ kind: 'hospital', id: created._id.toString(), status: created.verificationStatus });
     return session(user);

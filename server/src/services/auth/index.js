@@ -17,7 +17,6 @@ export function toAuthUser(doc) {
     role: doc.role,
     hospitalId: doc.hospitalId ? doc.hospitalId.toString() : null,
     verificationStatus: doc.verificationStatus ?? 'VERIFIED',
-    emailVerified: doc.emailVerified !== false,
   };
 }
 
@@ -38,7 +37,7 @@ export async function login({ email, password }) {
 /**
  * Google sign-in for an existing account (matched by Google ID, else by email — which links
  * it). Unknown Google emails get GOOGLE_ACCOUNT_NOT_FOUND with the email/name to prefill
- * registration. A Google-proven email counts as verified.
+ * registration.
  */
 export async function loginWithGoogle(credential) {
   const google = await verifyGoogleCredential(credential);
@@ -50,10 +49,9 @@ export async function loginWithGoogle(credential) {
     ]);
   }
   if (!user.isActive) throw new AppError('INVALID_CREDENTIALS');
-  if (!user.googleId || !user.emailVerified) {
-    await User.updateOne({ _id: user._id }, { $set: { googleId: google.googleId, emailVerified: true } });
+  if (!user.googleId) {
+    await User.updateOne({ _id: user._id }, { $set: { googleId: google.googleId } });
     user.googleId = google.googleId;
-    user.emailVerified = true;
   }
   const authUser = toAuthUser(user);
   return { token: signToken(authUser), user: await describeUser(authUser) };

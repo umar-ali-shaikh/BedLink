@@ -23,16 +23,6 @@ const userSchema = new mongoose.Schema(
       },
     },
     isActive: { type: Boolean, default: true },
-    /** Self-registered accounts start false until they enter the emailed code (Google sign-ups are true). */
-    emailVerified: { type: Boolean, default: true },
-    emailVerification: {
-      type: new mongoose.Schema(
-        { codeHash: String, expiresAt: Date, attempts: { type: Number, default: 0 }, sentAt: Date },
-        { _id: false }
-      ),
-      default: undefined,
-      select: false,
-    },
     googleId: { type: String, default: undefined },
     phone: { type: String, trim: true, default: '' },
     /** Self-registered ambulances start PENDING; seeded/admin-created accounts are VERIFIED. */

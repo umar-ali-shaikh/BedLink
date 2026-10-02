@@ -26,12 +26,9 @@ const HospitalProfilePage = lazy(() => import('../pages/hospital/HospitalProfile
 
 const AdminVerificationsPage = lazy(() => import('../pages/admin/AdminVerificationsPage').then((m) => ({ default: m.AdminVerificationsPage })));
 
-const VerifyEmailPage = lazy(() => import('../pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
-
 function HomeRedirect() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <FullPageLoader />;
-  if (user?.emailVerified === false) return <Navigate to={ROUTES.VERIFY_EMAIL} replace />;
   return <Navigate to={(user && HOME_BY_ROLE[user.role]) || ROUTES.LOGIN} replace />;
 }
 
@@ -68,7 +65,6 @@ export default function App() {
             <Route path={ROUTES.ADMIN_VERIFICATIONS} element={<AdminVerificationsPage />} />
           </Route>
 
-          <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
           </Suspense>

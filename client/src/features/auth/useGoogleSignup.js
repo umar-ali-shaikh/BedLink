@@ -4,8 +4,8 @@ import { decodeGoogleCredential } from './GoogleButton';
 
 /**
  * Registration with Google: the credential comes from the login page (router state) or the
- * form's own Google button. Its email/name prefill the form; no password is needed and the
- * email counts as verified once the server checks the token.
+ * form's own Google button. Its email/name prefill the form and no password is needed
+ * (the server checks the token).
  */
 export function useGoogleSignup(onPrefill) {
   const fromLogin = useLocation().state?.google ?? null;

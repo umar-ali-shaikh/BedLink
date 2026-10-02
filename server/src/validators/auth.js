@@ -85,12 +85,3 @@ export const registerHospitalSchema = {
 };
 
 export const googleSchema = { body: z.strictObject({ credential: z.string().min(20).max(5000) }) };
-
-export const verifyEmailSchema = {
-  body: z.strictObject({
-    code: z
-      .string()
-      .trim()
-      .regex(/^\d{6}$/, 'Enter the 6-digit code'),
-  }),
-};
