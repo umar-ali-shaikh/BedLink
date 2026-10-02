@@ -1,18 +1,24 @@
-import React from 'react';
-import { Inbox } from 'lucide-react';
-import { useActiveReservations, useHospitalRequests } from '../../features/hospital/hooks';
-import { IncomingRequestSlot } from '../../features/hospital/IncomingRequestSlot';
-import { ReservationActions, ReservationCard } from '../../features/reservations/ReservationCard';
-import { useReservationMutations } from './HospitalDashboardPage';
-import { StatusIndicator } from '../../components/StatusIndicator';
-import { EmptyState } from '../../components/EmptyState';
-import { ErrorState } from '../../components/ErrorState';
-import { Skeleton } from '../../components/Skeleton';
-import { CONDITION_LABELS } from '../../constants/booking';
-import { REJECT_REASON_LABELS } from '../../constants/emergency';
-import { requirementsText } from '../../utils/labels';
-import { formatClock } from '../../utils/formatRelative';
-import { errorMessage } from '../../services/api';
+import React from "react";
+import { Inbox } from "lucide-react";
+import {
+  useActiveReservations,
+  useHospitalRequests,
+} from "../../features/hospital/hooks";
+import { IncomingRequestSlot } from "../../features/hospital/IncomingRequestSlot";
+import {
+  ReservationActions,
+  ReservationCard,
+} from "../../features/reservations/ReservationCard";
+import { useReservationMutations } from "./HospitalDashboardPage";
+import { StatusIndicator } from "../../components/StatusIndicator";
+import { EmptyState } from "../../components/EmptyState";
+import { ErrorState } from "../../components/ErrorState";
+import { Skeleton } from "../../components/Skeleton";
+import { CONDITION_LABELS } from "../../constants/booking";
+import { REJECT_REASON_LABELS } from "../../constants/emergency";
+import { requirementsText } from "../../utils/labels";
+import { formatClock } from "../../utils/formatRelative";
+import { errorMessage } from "../../services/api";
 
 /** Pending (top), active reservations, then recent outcomes (DESIGN.md §8.3). */
 export function HospitalRequestsPage() {
@@ -20,25 +26,124 @@ export function HospitalRequestsPage() {
   const reservations = useActiveReservations();
   const { arrive, release } = useReservationMutations();
   const all = requests.data?.requests ?? [];
-  const pending = all.filter((r) => r.status === 'PENDING');
+  const pending = all.filter((r) => r.status === "PENDING");
 
-  const recent = all.filter((r) => r.status !== 'PENDING').slice(0, 30);
-  const offsetMs = requests.data ? new Date(requests.data.serverNow).getTime() - requests.data.fetchedAt : 0;
+  const recent = all.filter((r) => r.status !== "PENDING").slice(0, 30);
+  const offsetMs = requests.data
+    ? new Date(requests.data.serverNow).getTime() - requests.data.fetchedAt
+    : 0;
 
-  if (requests.isLoading) return <div className="space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20" />)}</div>;
-  if (requests.isError) return <ErrorState message={errorMessage(requests.error)} onRetry={requests.refetch} />;
+  if (requests.isLoading)
+    return (
+      <div className="space-y-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-20" />
+        ))}
+      </div>
+    );
+  if (requests.isError)
+    return (
+      <ErrorState
+        message={errorMessage(requests.error)}
+        onRetry={requests.refetch}
+      />
+    );
 
   return (
-    <div className="space-y-6">
-      {pending.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-h3 text-text">Pending</h2>
-          <IncomingRequestSlot requests={pending} offsetMs={offsetMs} />
-          {pending.length > 1 && <p className="text-small text-text-muted">{pending.length - 1} more waiting — they appear here one at a time.</p>}
-        </section>
-      )}
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] xl:grid-cols-[minmax(0,1fr)_460px] items-start">
+      <div className="space-y-6 min-w-0">
+        {pending.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-h3 text-text">Pending</h2>
+            <IncomingRequestSlot requests={pending} offsetMs={offsetMs} />
+            {pending.length > 1 && (
+              <p className="text-small text-text-muted">
+                {pending.length - 1} more waiting — they appear here one at a
+                time.
+              </p>
+            )}
+          </section>
+        )}
 
-      <section className="space-y-3">
+        <section>
+          <h2 className="text-h3 text-text mb-3">Recent requests</h2>
+          {recent.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              title="No requests yet"
+              description="Requests from ambulances show up here with their outcome."
+            />
+          ) : (
+            <ul className="bg-surface border border-border rounded-lg divide-y divide-border">
+              {recent.map((r) => (
+                <li key={r.id} className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-small font-semibold text-text tabular-nums">
+                        {r.emergency?.ambulance?.vehicleNumber ?? "Ambulance"}{" "}
+                        <span className="font-normal text-text-subtle">
+                          · {formatClock(r.offeredAt)}
+                        </span>
+                      </p>
+                      <p className="text-small text-text-muted truncate">
+                        {requirementsText(r.emergency?.requirements)}
+                      </p>
+                      {r.emergency?.ambulance && (
+                        <p className="text-[12px] text-text-subtle">
+                          {[
+                            r.emergency.ambulance.ambulanceType,
+                            r.emergency.ambulance.organization,
+                            r.emergency.ambulance.driverName &&
+                              `Driver ${r.emergency.ambulance.driverName}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                          {r.emergency.ambulance.phone && (
+                            <>
+                              {" · "}
+                              <a
+                                href={`tel:${r.emergency.ambulance.phone}`}
+                                className="font-semibold text-primary hover:underline"
+                              >
+                                Call {r.emergency.ambulance.phone}
+                              </a>
+                            </>
+                          )}
+                        </p>
+                      )}
+                      {r.emergency?.condition && (
+                        <p className="text-[12px] text-text-subtle">
+                          Reported:{" "}
+                          {CONDITION_LABELS[r.emergency.condition] ??
+                            r.emergency.condition}
+                        </p>
+                      )}
+                      {r.status === "REJECTED" && r.rejectReason && (
+                        <p className="text-[12px] text-text-subtle">
+                          Reason: {REJECT_REASON_LABELS[r.rejectReason]}
+                        </p>
+                      )}
+                      {r.reservation?.bed && (
+                        <p className="text-[12px] text-text-subtle">
+                          Bed {r.reservation.bed.label} ·{" "}
+                          {r.reservation.status.toLowerCase()}
+                        </p>
+                      )}
+                    </div>
+                    <StatusIndicator
+                      kind="offer"
+                      status={r.status}
+                      look="caps"
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <section className="space-y-3 min-w-0 lg:sticky lg:top-20">
         <h2 className="text-h3 text-text">Active reservations</h2>
         {reservations.data?.length ? (
           reservations.data.map((r) => (
@@ -47,7 +152,9 @@ export function HospitalRequestsPage() {
               reservation={r}
               compact
               crew={r.ambulance}
-              caller={all.find((o) => o.reservation?.id === r.id)?.emergency?.caller}
+              caller={
+                all.find((o) => o.reservation?.id === r.id)?.emergency?.caller
+              }
               actions={
                 <ReservationActions
                   size="lg"
@@ -60,46 +167,9 @@ export function HospitalRequestsPage() {
             />
           ))
         ) : (
-          <p className="text-small text-text-subtle">No beds are held right now.</p>
-        )}
-      </section>
-
-      <section>
-        <h2 className="text-h3 text-text mb-3">Recent requests</h2>
-        {recent.length === 0 ? (
-          <EmptyState icon={Inbox} title="No requests yet" description="Requests from ambulances show up here with their outcome." />
-        ) : (
-          <ul className="bg-surface border border-border rounded-lg divide-y divide-border">
-            {recent.map((r) => (
-              <li key={r.id} className="px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-small font-semibold text-text tabular-nums">
-                      {r.emergency?.ambulance?.vehicleNumber ?? 'Ambulance'} <span className="font-normal text-text-subtle">· {formatClock(r.offeredAt)}</span>
-                    </p>
-                    <p className="text-small text-text-muted truncate">{requirementsText(r.emergency?.requirements)}</p>
-                    {r.emergency?.ambulance && (
-                      <p className="text-[12px] text-text-subtle">
-                        {[r.emergency.ambulance.ambulanceType, r.emergency.ambulance.organization, r.emergency.ambulance.driverName && `Driver ${r.emergency.ambulance.driverName}`].filter(Boolean).join(' · ')}
-                        {r.emergency.ambulance.phone && (
-                          <>
-                            {' · '}
-                            <a href={`tel:${r.emergency.ambulance.phone}`} className="font-semibold text-primary hover:underline">
-                              Call {r.emergency.ambulance.phone}
-                            </a>
-                          </>
-                        )}
-                      </p>
-                    )}
-                    {r.emergency?.condition && <p className="text-[12px] text-text-subtle">Reported: {CONDITION_LABELS[r.emergency.condition] ?? r.emergency.condition}</p>}
-                    {r.status === 'REJECTED' && r.rejectReason && <p className="text-[12px] text-text-subtle">Reason: {REJECT_REASON_LABELS[r.rejectReason]}</p>}
-                    {r.reservation?.bed && <p className="text-[12px] text-text-subtle">Bed {r.reservation.bed.label} · {r.reservation.status.toLowerCase()}</p>}
-                  </div>
-                  <StatusIndicator kind="offer" status={r.status} look="caps" />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <p className="text-small text-text-subtle">
+            No beds are held right now.
+          </p>
         )}
       </section>
     </div>

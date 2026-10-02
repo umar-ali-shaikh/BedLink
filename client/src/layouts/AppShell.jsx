@@ -1,26 +1,54 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Menu, X } from 'lucide-react';
-import { useAuth } from '../features/auth/useAuth';
-import { ConnectionBanner, LiveIndicator } from '../components/ConnectionBanner';
-import { Logo } from '../components/Logo';
-import { ROUTES } from '../constants/routes';
-import { cn } from '../utils/cn';
+import React, { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { BedDouble, LogOut, Menu, X } from "lucide-react";
+import { useAuth } from "../features/auth/useAuth";
+import {
+  ConnectionBanner,
+  LiveIndicator,
+} from "../components/ConnectionBanner";
+import { Logo } from "../components/Logo";
+import { ROUTES } from "../constants/routes";
+import { cn } from "../utils/cn";
 
-const initials = (name = '') =>
+const initials = (name = "") =>
   name
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((p) => p[0].toUpperCase())
-    .join('') || 'BL';
+    .join("") || "BL";
+
+function CountBadge({ n, className }) {
+  return (
+    <span
+      className={cn(
+        "min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-text-inverse text-[10px] font-bold flex items-center justify-center tabular-nums",
+        className,
+      )}
+    >
+      {n}
+    </span>
+  );
+}
 
 /**
  * Desktop operations shell from the Stitch "Dispatch Hub" design: white sidebar with an
  * OPERATIONS nav group and the user card at the bottom, a breadcrumb top bar with the live
- * indicator. Below 1024 px the sidebar becomes a drawer.
+ * indicator. Below 1024 px the sidebar becomes a drawer, or, with `mobileTabs`, a bottom tab
+ * bar (the hospital panel's one-thumb layout on phones and tablets).
+ * `bottomBar` is pinned to the bottom of the content column at every width (e.g. an alert strip).
  */
-export function AppShell({ nav, hub = 'Dispatch hub', section, roleLabel, primaryAction, banner }) {
+export function AppShell({
+  nav,
+  hub = "Dispatch hub",
+  section,
+  roleLabel,
+  primaryAction,
+  banner,
+  headerActions,
+  bottomBar,
+  mobileTabs = false,
+}) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,22 +67,27 @@ export function AppShell({ nav, hub = 'Dispatch hub', section, roleLabel, primar
         <Logo subtitle={hub} />
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Main">
-        <p className="px-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-text-subtle">Operations</p>
+        <p className="px-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-text-subtle">
+          Operations
+        </p>
         <ul className="space-y-0.5">
-          {nav.map(({ to, label, icon: Icon, end }) => (
+          {nav.map(({ to, label, icon: Icon, end, badge }) => (
             <li key={to}>
               <NavLink
                 to={to}
                 end={end}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-2.5 h-10 px-2.5 rounded-md text-[14px] font-medium transition-colors',
-                    isActive ? 'bg-primary-soft text-primary font-semibold' : 'text-text-muted hover:bg-surface-muted hover:text-text'
+                    "flex items-center gap-2.5 h-10 px-2.5 rounded-md text-[14px] font-medium transition-colors",
+                    isActive
+                      ? "bg-primary-soft text-primary font-semibold"
+                      : "text-text-muted hover:bg-surface-muted hover:text-text",
                   )
                 }
               >
                 <Icon className="w-[18px] h-[18px] shrink-0" aria-hidden />
-                {label}
+                <span className="flex-1">{label}</span>
+                {badge > 0 && <CountBadge n={badge} />}
               </NavLink>
             </li>
           ))}
@@ -63,14 +96,25 @@ export function AppShell({ nav, hub = 'Dispatch hub', section, roleLabel, primar
       </nav>
       <div className="border-t border-border p-3">
         <div className="flex items-center gap-2.5 p-2 rounded-md">
-          <span className="w-9 h-9 rounded-md bg-primary text-text-inverse flex items-center justify-center text-small font-bold shrink-0" aria-hidden>
+          <span
+            className="w-9 h-9 rounded-md bg-primary text-text-inverse flex items-center justify-center text-small font-bold shrink-0"
+            aria-hidden
+          >
             {initials(user?.name)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-small font-semibold text-text truncate">{user?.name}</p>
+            <p className="text-small font-semibold text-text truncate">
+              {user?.name}
+            </p>
             <p className="text-[11px] text-text-subtle truncate">{roleLabel}</p>
           </div>
-          <button type="button" onClick={signOut} className="p-2 rounded-md text-text-subtle hover:text-danger hover:bg-danger-soft" aria-label="Sign out" title="Sign out">
+          <button
+            type="button"
+            onClick={signOut}
+            className="p-2 rounded-md text-text-subtle hover:text-danger hover:bg-danger-soft"
+            aria-label="Sign out"
+            title="Sign out"
+          >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -80,13 +124,24 @@ export function AppShell({ nav, hub = 'Dispatch hub', section, roleLabel, primar
 
   return (
     <div className="min-h-screen bg-bg">
-      <aside className="hidden lg:block fixed inset-y-0 left-0 w-60 bg-surface border-r border-border z-30">{sidebar}</aside>
+      <aside className="hidden lg:block fixed inset-y-0 left-0 w-60 bg-surface border-r border-border z-30">
+        {sidebar}
+      </aside>
 
       {open && (
         <div className="lg:hidden fixed inset-0 z-[800]">
-          <div className="absolute inset-0 bg-text/40" onClick={() => setOpen(false)} aria-hidden />
+          <div
+            className="absolute inset-0 bg-text/40"
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
           <aside className="absolute inset-y-0 left-0 w-64 bg-surface shadow-raised animate-fade-in">
-            <button type="button" onClick={() => setOpen(false)} className="absolute right-2 top-4 p-2 rounded-md text-text-subtle hover:bg-neutral-soft" aria-label="Close menu">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="absolute right-2 top-4 p-2 rounded-md text-text-subtle hover:bg-neutral-soft"
+              aria-label="Close menu"
+            >
               <X className="w-5 h-5" />
             </button>
             {sidebar}
@@ -99,21 +154,94 @@ export function AppShell({ nav, hub = 'Dispatch hub', section, roleLabel, primar
           <ConnectionBanner />
           <header className="h-14 bg-surface/95 backdrop-blur border-b border-border px-4 lg:px-6 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <button type="button" onClick={() => setOpen(true)} className="lg:hidden p-2 -ml-2 rounded-md text-text-muted hover:bg-neutral-soft" aria-label="Open menu">
-                <Menu className="w-5 h-5" />
-              </button>
+              {mobileTabs ? (
+                <span
+                  className="lg:hidden w-8 h-8 rounded-md bg-primary text-text-inverse flex items-center justify-center shrink-0"
+                  aria-hidden
+                >
+                  <BedDouble className="w-[18px] h-[18px]" />
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setOpen(true)}
+                  className="lg:hidden p-2 -ml-2 rounded-md text-text-muted hover:bg-neutral-soft"
+                  aria-label="Open menu"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+              )}
               <p className="text-[11px] font-bold uppercase tracking-wider text-text truncate">
-                BedLink <span className="text-text-subtle font-semibold">/ {section}</span>
+                BedLink{" "}
+                <span className="text-text-subtle font-semibold">
+                  / {section}
+                </span>
               </p>
             </div>
-            <LiveIndicator />
+            <div className="flex items-center gap-2 shrink-0">
+              <LiveIndicator />
+              {headerActions}
+            </div>
           </header>
         </div>
-        <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 py-5 lg:px-6 lg:py-6">
+        <main
+          className={cn(
+            "flex-1 w-full max-w-[1600px] mx-auto px-4 py-5 lg:px-6 lg:py-6",
+            mobileTabs && (bottomBar ? "pb-44" : "pb-24"),
+            mobileTabs && "lg:pb-6",
+            bottomBar && "lg:pb-24",
+          )}
+        >
           {banner}
           <Outlet />
         </main>
       </div>
+
+      {(bottomBar || mobileTabs) && (
+        <div className="fixed bottom-0 right-0 left-0 lg:left-60 z-30">
+          {bottomBar && (
+            <div className="max-w-[720px] mx-auto px-3 lg:px-6 pb-2 lg:pb-4">
+              {bottomBar}
+            </div>
+          )}
+          {mobileTabs && (
+            <nav
+              className="lg:hidden bg-surface border-t border-border grid pb-[env(safe-area-inset-bottom)]"
+              style={{
+                gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))`,
+              }}
+              aria-label="Sections"
+            >
+              {nav.map(({ to, label, short, icon: Icon, end, badge }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    cn(
+                      "h-16 flex flex-col items-center justify-center gap-1 text-[12px] font-semibold",
+                      isActive
+                        ? "text-primary"
+                        : "text-text-subtle hover:text-text",
+                    )
+                  }
+                >
+                  <span className="relative">
+                    <Icon className="w-5 h-5" aria-hidden />
+                    {badge > 0 && (
+                      <CountBadge
+                        n={badge}
+                        className="absolute -top-1.5 -right-2.5"
+                      />
+                    )}
+                  </span>
+                  {short ?? label}
+                </NavLink>
+              ))}
+            </nav>
+          )}
+        </div>
+      )}
     </div>
   );
 }
