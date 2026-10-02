@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { cn } from '../../utils/cn';
 import { config } from '../../config';
@@ -40,14 +40,6 @@ function FitBounds({ points, padding = 40 }) {
   return null;
 }
 
-function ClickToPick({ onPick }) {
-  useMapEvents({
-    click(e) {
-      onPick?.({ lat: +e.latlng.lat.toFixed(5), lng: +e.latlng.lng.toFixed(5) });
-    },
-  });
-  return null;
-}
 
 const valid = (p) => p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng);
 
@@ -56,7 +48,7 @@ const valid = (p) => p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng);
  * rank and coloured by confidence, selected larger with a ring, excluded grey (toggle).
  * `others` = plain hospital markers before a search. The list always mirrors the map.
  */
-export function MapPanel({ patientLocation, candidates = [], exclusions = [], others = [], selectedId, onSelect, onPickLocation, className, pinLabel = 'Patient location', title = 'Map', showLegend = true }) {
+export function MapPanel({ patientLocation, candidates = [], exclusions = [], others = [], selectedId, onSelect, className, pinLabel = 'Patient location', title = 'Map', showLegend = true }) {
   const [showExcluded, setShowExcluded] = useState(true);
   const patient = valid(patientLocation) ? [+patientLocation.lat, +patientLocation.lng] : null;
 
@@ -91,10 +83,9 @@ export function MapPanel({ patientLocation, candidates = [], exclusions = [], ot
         </div>
       </div>
       <div className="flex-1 min-h-[280px]">
-        <MapContainer center={patient ?? [config.defaultLocation.lat, config.defaultLocation.lng]} zoom={12} scrollWheelZoom className="h-full w-full">
+        <MapContainer center={patient ?? [config.mapCenter.lat, config.mapCenter.lng]} zoom={patient ? 13 : config.mapCenter.zoom} scrollWheelZoom className="h-full w-full">
           <TileLayer attribution={config.mapAttribution} url={config.mapTileUrl} />
           <FitBounds points={points} />
-          {onPickLocation && <ClickToPick onPick={onPickLocation} />}
 
           {!candidates.length &&
             others.filter((h) => valid(h.coordinates)).map((h) => (

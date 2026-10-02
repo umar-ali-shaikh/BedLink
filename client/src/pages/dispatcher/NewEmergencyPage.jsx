@@ -19,13 +19,12 @@ import { useToast } from '../../components/Toast';
 import { useSocket } from '../../socket/SocketContext';
 import { useSocketEvent } from '../../socket/useSocketEvent';
 import { SOCKET_EVENTS } from '../../constants/socketEvents';
-import { DEFAULT_PATIENT_LOCATION } from '../../constants/hospital';
 import { emergencyPath } from '../../constants/routes';
 import { qk } from '../../services/queryKeys';
 import { errorMessage } from '../../services/api';
 import { requirementsText } from '../../utils/labels';
 
-const validLoc = (l) => Number.isFinite(+l.lat) && Number.isFinite(+l.lng) && l.lat !== '' && l.lng !== '';
+const validLoc = (l) => Boolean(l) && Number.isFinite(+l.lat) && Number.isFinite(+l.lng);
 
 /**
  * Core dispatcher screen (DESIGN.md §8.2): requirements | ranked hospitals | map at ≥ 1280 px.
@@ -53,7 +52,7 @@ function NewEmergencyForm() {
   const { showToast } = useToast();
   const { isConnected } = useSocket();
   const [requirements, setRequirements] = useState(DEFAULT_REQUIREMENTS);
-  const [location, setLocation] = useState({ ...DEFAULT_PATIENT_LOCATION });
+  const [location, setLocation] = useState(null);
   const [result, setResult] = useState(null);
   const [editing, setEditing] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -61,8 +60,8 @@ function NewEmergencyForm() {
   const [availabilityChanged, setAvailabilityChanged] = useState(false);
 
   const nearby = useQuery({
-    queryKey: qk.nearby(+location.lat, +location.lng),
-    queryFn: () => hospitalsApi.nearby({ lat: +location.lat, lng: +location.lng }),
+    queryKey: qk.nearby(location?.lat, location?.lng),
+    queryFn: () => hospitalsApi.nearby({ lat: location.lat, lng: location.lng }),
     enabled: validLoc(location) && !result,
     placeholderData: (prev) => prev,
   });
@@ -119,9 +118,7 @@ function NewEmergencyForm() {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small">
         <StatusIndicator kind="urgency" status={result?.urgency ?? requirements.urgency} look="caps" />
         <span className="font-semibold text-text">{requirementsText(result?.requirements ?? requirements)}</span>
-        <span className="text-text-subtle tabular-nums">
-          {(+location.lat).toFixed(4)}, {(+location.lng).toFixed(4)}
-        </span>
+        {location && <span className="text-text-subtle truncate max-w-[22rem]">{location.label}</span>}
         {result && <span className="text-text-subtle">· {result.demoPatientId}</span>}
       </div>
     ),
@@ -174,7 +171,6 @@ function NewEmergencyForm() {
         others={result ? [] : (nearby.data ?? [])}
         selectedId={selectedId}
         onSelect={setSelectedId}
-        onPickLocation={result && !editing ? undefined : setLocation}
       />
 
       {/* Zone 2 — ranked hospitals */}
@@ -190,7 +186,7 @@ function NewEmergencyForm() {
             )}
           </div>
           {result && (
-            <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => create.mutate({ patientLocation: { lat: +location.lat, lng: +location.lng }, requirements: { bedType: requirements.bedType, equipment: requirements.equipment, specialties: requirements.specialties }, urgency: requirements.urgency })} isLoading={create.isPending}>
+            <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => create.mutate({ patientLocation: { lat: location.lat, lng: location.lng }, requirements: { bedType: requirements.bedType, equipment: requirements.equipment, specialties: requirements.specialties }, urgency: requirements.urgency })} isLoading={create.isPending} disabled={!location}>
               Re-rank
             </Button>
           )}
@@ -213,7 +209,7 @@ function NewEmergencyForm() {
           <EmptyState
             icon={Search}
             title="Enter requirements to find a bed"
-            description="Pick bed type, equipment, specialties and the patient location, then Find beds. Hospitals are ranked by resources, travel time, data freshness and load."
+            description="Pick bed type, equipment, specialties, search the patient’s location, then Find beds. Hospitals are ranked by resources, travel time, data freshness and load."
             className="py-12"
           />
         ) : noMatch ? (

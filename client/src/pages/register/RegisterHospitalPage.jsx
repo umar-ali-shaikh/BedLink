@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Check, LocateFixed, ShieldCheck } from 'lucide-react';
+import { Building2, Check, ShieldCheck } from 'lucide-react';
 import { Field, PASSWORD_RULE, RegisterShell, serverFieldErrors } from '../../features/auth/RegisterShell';
 import { useAuth } from '../../features/auth/useAuth';
 import { MapPanel } from '../../features/dispatcher/MapPanel';
+import { LocationSearch } from '../../features/location/LocationSearch';
 import { Button } from '../../components/Button';
 import { HFR_ID_PATTERN, PHONE_PATTERN, REGISTRATION_NUMBER_PATTERN, normalisePhone } from '../../constants/ambulance';
 import { SPECIALTY_LABELS, SPECIALTY_VALUES } from '../../constants/hospital';
 import { ROUTES } from '../../constants/routes';
-import { config } from '../../config';
 import { errorMessage } from '../../services/api';
 import { cn } from '../../utils/cn';
 import { useGoogleSignup } from '../../features/auth/useGoogleSignup';
@@ -21,8 +21,7 @@ const EMPTY = {
   phone: '',
   hospitalEmail: '',
   address: '',
-  lat: '',
-  lng: '',
+  place: null,
   specialties: [],
   contactName: '',
   email: '',
@@ -42,7 +41,7 @@ function validate(f, google) {
   if (!PHONE_PATTERN.test(normalisePhone(f.phone))) e.phone = 'Enter a valid 10-digit number';
   if (!validEmail(f.hospitalEmail)) e.hospitalEmail = 'Enter the official hospital email';
   if (f.address.trim().length < 5) e.address = 'Enter the full address';
-  if (!Number.isFinite(+f.lat) || !Number.isFinite(+f.lng) || f.lat === '' || f.lng === '') e.location = 'Pick the hospital on the map';
+  if (!f.place) e.location = 'Search for the hospital and pick it from the list';
   if (f.contactName.trim().length < 2) e.contactName = 'Enter your name';
   if (!validEmail(f.email)) e.email = 'Enter a valid email';
   if (!google) {
@@ -96,23 +95,10 @@ export function RegisterHospitalPage() {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [locating, setLocating] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
-  const setLocation = ({ lat, lng }) => setForm((f) => ({ ...f, lat, lng }));
-  const hasLocation = form.lat !== '' && form.lng !== '' && Number.isFinite(+form.lat) && Number.isFinite(+form.lng);
+  // Picking a place also fills the address (still editable) when it's empty.
+  const setPlace = (place) => setForm((f) => ({ ...f, place, address: place && !f.address.trim() ? place.label : f.address }));
 
-  const useMyLocation = () => {
-    if (!navigator.geolocation) return;
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setLocation({ lat: +p.coords.latitude.toFixed(5), lng: +p.coords.longitude.toFixed(5) });
-        setLocating(false);
-      },
-      () => setLocating(false),
-      { timeout: 8000 }
-    );
-  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -129,7 +115,7 @@ export function RegisterHospitalPage() {
         hospital: {
           name: form.name.trim(),
           address: form.address.trim(),
-          coordinates: { lat: +form.lat, lng: +form.lng },
+          coordinates: { lat: form.place.lat, lng: form.place.lng },
           specialties: form.specialties,
           registrationNumber: form.registrationNumber.trim().toUpperCase(),
           ...(form.hfrId.trim() ? { hfrId: form.hfrId.replace(/[\s-]/g, '').toUpperCase() } : {}),
@@ -208,28 +194,18 @@ export function RegisterHospitalPage() {
         </Section>
 
         <Section n="2" title="Location">
-          <Field id="address" label="Full address" error={errors.address}>
+          <div>
+            <label htmlFor="location" className="label">
+              Find your hospital
+            </label>
+            <LocationSearch id="location" value={form.place} onChange={setPlace} error={errors.location} placeholder="Hospital name, street or area with city" />
+          </div>
+          {form.place && (
+            <MapPanel className="h-[220px]" patientLocation={form.place} title="Location preview" pinLabel="Hospital" showLegend={false} />
+          )}
+          <Field id="address" label="Full address" error={errors.address} hint="Filled from the search — edit if needed">
             {input('address', { placeholder: 'Street, area, city, PIN' })}
           </Field>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="label mb-0">Pin on map</span>
-              <button type="button" onClick={useMyLocation} disabled={locating} className="inline-flex items-center gap-1 text-small font-medium text-primary hover:underline disabled:opacity-50">
-                <LocateFixed className="w-3.5 h-3.5" aria-hidden /> {locating ? 'Locating…' : 'Use my location'}
-              </button>
-            </div>
-            <MapPanel
-              className={cn('h-[280px]', errors.location && 'border-danger')}
-              patientLocation={hasLocation ? { lat: +form.lat, lng: +form.lng } : config.defaultLocation}
-              onPickLocation={setLocation}
-              title="Hospital location"
-              pinLabel="Hospital"
-              showLegend={false}
-            />
-            <p className={cn('mt-1.5 text-[12px] tabular-nums', errors.location ? 'text-danger' : 'text-text-subtle')}>
-              {errors.location ?? (hasLocation ? `Pinned at ${(+form.lat).toFixed(5)}, ${(+form.lng).toFixed(5)} — click the map to adjust` : 'Click the hospital entrance on the map')}
-            </p>
-          </div>
         </Section>
 
         <Section n="3" title="Your login">

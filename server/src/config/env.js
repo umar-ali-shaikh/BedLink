@@ -58,13 +58,19 @@ const envSchema = z.object({
   ADMIN_NAME: z.string().default('BedLink Admin'),
   /** Google Identity Services OAuth client ID (Web). Unset = Google sign-in disabled. */
   GOOGLE_CLIENT_ID: z.string().optional(),
+  /** Nominatim-compatible geocoder for address search (default: OpenStreetMap's public one). */
+  GEOCODER_URL: z.string().default('https://nominatim.openstreetmap.org'),
+  /** Contact email sent to the geocoder (Nominatim asks for one). */
+  GEOCODER_EMAIL: z.string().optional(),
+  /** Limit address search to these ISO country codes (comma-separated), e.g. `in`. Empty = worldwide. */
+  GEOCODER_COUNTRY: z.string().default('in'),
   /** Registration attempts per IP per hour. */
   REGISTER_RATE_LIMIT_PER_HOUR: positiveInt.default(10),
   /**
-   * Load the demo dataset at startup, but only when the database has no users and no
-   * hospitals (a fresh Atlas cluster). Never touches a database that has data.
+   * Remove the seeded demo dataset (`@bedlink.demo` users, seeded hospitals and their data) at
+   * startup. Real registrations are never touched; safe to leave on.
    */
-  SEED_DEMO_ON_EMPTY: bool.default(false),
+  PURGE_DEMO_DATA: bool.default(false),
   /** `npm run seed` wipes the database; in production it refuses unless this is true. */
   SEED_ALLOW_PRODUCTION: bool.default(false),
 

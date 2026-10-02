@@ -20,6 +20,9 @@ export const registerLimiter = rateLimit({
   limit: () => env.REGISTER_RATE_LIMIT_PER_HOUR,
 });
 
+/** Place search: 40/min/IP (typing is debounced on the client; results are cached). */
+export const geocodeLimiter = rateLimit({ ...base, limit: 40 });
+
 /** Everything: 300/min/IP. */
 export const globalLimiter = rateLimit({ ...base, limit: 300 });
 

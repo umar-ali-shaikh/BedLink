@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Check, Crosshair, LocateFixed, MapPin, Search } from 'lucide-react';
+import { Check, Search } from 'lucide-react';
 import { z } from 'zod';
 import { Button } from '../../components/Button';
 import { Segmented } from '../../components/Segmented';
 import { BED_TYPE_LABELS, BED_TYPE_VALUES, EQUIPMENT_LABELS, EQUIPMENT_VALUES } from '../../constants/bed';
-import { DEFAULT_PATIENT_LOCATION, SPECIALTY_LABELS, SPECIALTY_VALUES } from '../../constants/hospital';
+import { SPECIALTY_LABELS, SPECIALTY_VALUES } from '../../constants/hospital';
+import { LocationSearch } from '../location/LocationSearch';
 import { URGENCY_VALUES } from '../../constants/emergency';
 import { cn } from '../../utils/cn';
 
@@ -13,8 +14,6 @@ const schema = z.object({
   equipment: z.array(z.enum(EQUIPMENT_VALUES)),
   specialties: z.array(z.enum(SPECIALTY_VALUES)),
   urgency: z.enum(URGENCY_VALUES),
-  lat: z.coerce.number({ invalid_type_error: 'Latitude must be a number' }).min(-90, 'Latitude must be between -90 and 90').max(90, 'Latitude must be between -90 and 90'),
-  lng: z.coerce.number({ invalid_type_error: 'Longitude must be a number' }).min(-180, 'Longitude must be between -180 and 180').max(180, 'Longitude must be between -180 and 180'),
 });
 
 export const DEFAULT_REQUIREMENTS = {
@@ -53,39 +52,25 @@ function Section({ step, title, children }) {
 
 /**
  * Requirement form (DESIGN.md §8.2 zone 1). No patient name/phone/notes fields exist on
- * purpose (RULES.md §9). Location is controlled by the parent so a map click can set it.
+ * purpose (RULES.md §9). Location (`{ lat, lng, label }` or null) comes from address search or GPS.
  */
 export function EmergencyForm({ value, onChange, location, onLocationChange, onSubmit, isSubmitting, disabled }) {
   const [errors, setErrors] = useState({});
-  const [locating, setLocating] = useState(false);
   const set = (patch) => onChange({ ...value, ...patch });
   const toggle = (key, item) =>
     set({ [key]: value[key].includes(item) ? value[key].filter((v) => v !== item) : [...value[key], item] });
 
   const submit = (e) => {
     e.preventDefault();
-    const parsed = schema.safeParse({ ...value, lat: location.lat, lng: location.lng });
-    if (!parsed.success) {
-      setErrors(Object.fromEntries(parsed.error.issues.map((i) => [i.path[0], i.message])));
-      return;
-    }
-    setErrors({});
-    const { lat, lng, urgency, ...requirements } = parsed.data;
-    onSubmit({ patientLocation: { lat, lng }, requirements, urgency });
+    const parsed = schema.safeParse(value);
+    const found = parsed.success ? {} : Object.fromEntries(parsed.error.issues.map((i) => [i.path[0], i.message]));
+    if (!location) found.location = 'Search for the patient’s location and pick it from the list';
+    setErrors(found);
+    if (Object.keys(found).length) return;
+    const { urgency, ...requirements } = parsed.data;
+    onSubmit({ patientLocation: { lat: location.lat, lng: location.lng }, requirements, urgency });
   };
 
-  const useMyLocation = () => {
-    if (!navigator.geolocation) return;
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        onLocationChange({ lat: +pos.coords.latitude.toFixed(5), lng: +pos.coords.longitude.toFixed(5) });
-        setLocating(false);
-      },
-      () => setLocating(false),
-      { timeout: 8000 }
-    );
-  };
 
   return (
     <form onSubmit={submit} className="space-y-6" noValidate>
@@ -140,48 +125,7 @@ export function EmergencyForm({ value, onChange, location, onLocationChange, onS
       </Section>
 
       <Section step="5" title="Patient location">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label htmlFor="lat" className="sr-only">
-              Latitude
-            </label>
-            <input
-              id="lat"
-              inputMode="decimal"
-              className={cn('input tabular-nums', errors.lat && 'border-danger')}
-              value={location.lat}
-              onChange={(e) => onLocationChange({ ...location, lat: e.target.value })}
-              placeholder="Latitude"
-              aria-invalid={!!errors.lat}
-            />
-          </div>
-          <div>
-            <label htmlFor="lng" className="sr-only">
-              Longitude
-            </label>
-            <input
-              id="lng"
-              inputMode="decimal"
-              className={cn('input tabular-nums', errors.lng && 'border-danger')}
-              value={location.lng}
-              onChange={(e) => onLocationChange({ ...location, lng: e.target.value })}
-              placeholder="Longitude"
-              aria-invalid={!!errors.lng}
-            />
-          </div>
-        </div>
-        {(errors.lat || errors.lng) && <p className="text-small text-danger">{errors.lat || errors.lng}</p>}
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-small">
-          <button type="button" className="inline-flex items-center gap-1 text-primary font-medium hover:underline" onClick={() => onLocationChange({ ...DEFAULT_PATIENT_LOCATION })}>
-            <MapPin className="w-3.5 h-3.5" aria-hidden /> Demo location
-          </button>
-          <button type="button" className="inline-flex items-center gap-1 text-primary font-medium hover:underline disabled:opacity-50" onClick={useMyLocation} disabled={locating}>
-            <LocateFixed className="w-3.5 h-3.5" aria-hidden /> {locating ? 'Locating…' : 'My location'}
-          </button>
-          <span className="inline-flex items-center gap-1 text-text-subtle">
-            <Crosshair className="w-3.5 h-3.5" aria-hidden /> or click the map
-          </span>
-        </div>
+        <LocationSearch id="patient-location" value={location} onChange={onLocationChange} error={errors.location} placeholder="Search address, area or landmark" />
       </Section>
 
       <Button type="submit" size="lg" icon={Search} className="w-full" isLoading={isSubmitting} disabled={disabled}>

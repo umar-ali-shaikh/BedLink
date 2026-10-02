@@ -33,7 +33,7 @@ export function HospitalsTable({ query, title = 'Hospitals', onRowClick, actions
       render: (h) => (
         <div className="min-w-0">
           <p className="font-semibold text-text truncate">{h.name}</p>
-          <p className="text-[12px] text-text-subtle truncate">{(h.address ?? '').replace(' (fictional)', '')}</p>
+          <p className="text-[12px] text-text-subtle truncate">{h.address ?? ''}</p>
         </div>
       ),
     },
@@ -49,7 +49,7 @@ export function HospitalsTable({ query, title = 'Hospitals', onRowClick, actions
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-4 pb-3">
         <div>
           <h2 className="text-[15px] font-semibold text-text">{title}</h2>
-          <p className="text-small text-text-subtle">{hospitals.length} facilities monitored · {config.regionName}</p>
+          <p className="text-small text-text-subtle">{hospitals.length} verified facilities{config.regionName ? ` · ${config.regionName}` : ''}</p>
         </div>
         <div className="flex items-center gap-2">
           <label className="relative block sm:w-72">

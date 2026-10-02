@@ -27,11 +27,11 @@ services:
         value: lax
       - key: MONGO_TRANSACTIONS
         value: 'true'
-      - key: VITE_SHOW_DEMO_ACCOUNTS
+      # Removes old sample data if any (real registrations are kept)
+      - key: PURGE_DEMO_DATA
         value: 'true'
-      # Demo data on first boot of an empty database (never touches existing data).
-      - key: SEED_DEMO_ON_EMPTY
-        value: 'true'
+      - key: GEOCODER_EMAIL
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       # Verification panel login (https://<app>/login → /admin/verifications)

@@ -2,7 +2,7 @@
   "name": "bedlink-server",
   "version": "0.1.0",
   "private": true,
-  "description": "BedLink API — Express + Socket.IO + MongoDB",
+  "description": "BedLink API \u2014 Express + Socket.IO + MongoDB",
   "type": "module",
   "main": "src/server.js",
   "engines": {
@@ -17,7 +17,8 @@
     "lint": "eslint src tests",
     "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\" \"*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"tests/**/*.js\" \"*.js\"",
-    "hospitals": "node src/utils/hospitals.js"
+    "hospitals": "node src/utils/hospitals.js",
+    "demo:purge": "node src/utils/purgeDemo.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

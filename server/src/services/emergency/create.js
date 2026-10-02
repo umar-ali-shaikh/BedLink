@@ -1,4 +1,4 @@
-import { DEMO_PATIENT_PREFIX, DEFAULT_URGENCY, EMERGENCY_STATUS, TIMELINE_EVENTS } from '../../constants/emergency.js';
+import { CASE_REF_PREFIX, DEFAULT_URGENCY, EMERGENCY_STATUS, TIMELINE_EVENTS } from '../../constants/emergency.js';
 import { ROLES } from '../../constants/roles.js';
 import { SERVER_EVENTS } from '../../constants/socketEvents.js';
 import { emergencyRepo } from '../../repositories/emergencyRepo.js';
@@ -9,10 +9,10 @@ import { emit } from '../notification/index.js';
 import { concludeNoMatch } from './fallback.js';
 import { SYSTEM_ACTOR, record, userActor } from './timeline.js';
 
-/** `DEMO-P-0042` style id. Never real identity (RULES.md §9). Uniqueness is not required. */
-async function nextDemoPatientId() {
+/** `EM-0042` style case reference. Never real identity (RULES.md §9). */
+async function nextCaseRef() {
   const count = await emergencyRepo.count();
-  return `${DEMO_PATIENT_PREFIX}${String(count + 1).padStart(4, '0')}`;
+  return `${CASE_REF_PREFIX}${String(count + 1).padStart(4, '0')}`;
 }
 
 /**
@@ -23,7 +23,7 @@ export async function createEmergency({ patientLocation, requirements, urgency =
   const now = new Date();
   const emergency = await emergencyRepo.create({
     dispatcherId: user.id,
-    demoPatientId: await nextDemoPatientId(),
+    demoPatientId: await nextCaseRef(),
     patientLocation: toPoint(patientLocation),
     requirements,
     urgency,

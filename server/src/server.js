@@ -2,8 +2,8 @@ import dns from 'node:dns';
 import http from 'node:http';
 import { env } from './config/env.js';
 import { connectDB, disconnectDB, ensureIndexes } from './config/db.js';
-import { Hospital, User } from './models/index.js';
-import { seedDatabase } from './utils/seed.js';
+import './models/index.js';
+import { purgeDemoData } from './utils/purgeDemo.js';
 import { ensureAdmin } from './services/auth/bootstrapAdmin.js';
 import { createApp } from './app.js';
 import { createSocketServer } from './sockets/index.js';
@@ -17,23 +17,11 @@ function configureDns() {
   if (env.DNS_SERVER_LIST.length) dns.setServers(env.DNS_SERVER_LIST);
 }
 
-/** SEED_DEMO_ON_EMPTY: demo data for a brand-new database (no users, no hospitals). */
-async function seedIfEmpty() {
-  if (!env.SEED_DEMO_ON_EMPTY) return;
-  const [users, hospitals] = await Promise.all([User.estimatedDocumentCount(), Hospital.estimatedDocumentCount()]);
-  if (users > 0 || hospitals > 0) {
-    logger.info('seed.skipped_not_empty', { users, hospitals });
-    return;
-  }
-  const { counts } = await seedDatabase();
-  logger.info('seed.demo_loaded', counts);
-}
-
 async function start() {
   configureDns();
   await connectDB();
   await ensureIndexes();
-  await seedIfEmpty();
+  if (env.PURGE_DEMO_DATA) await purgeDemoData();
   await ensureAdmin();
 
   const app = createApp();

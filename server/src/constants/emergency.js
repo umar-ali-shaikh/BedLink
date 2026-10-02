@@ -88,4 +88,5 @@ export const TIMELINE_EVENT_VALUES = Object.freeze(Object.values(TIMELINE_EVENTS
 
 export const ACTOR_TYPES = Object.freeze({ USER: 'USER', SYSTEM: 'SYSTEM' });
 
-export const DEMO_PATIENT_PREFIX = 'DEMO-P-';
+/** Emergency case reference shown in the UI, e.g. EM-0042. Never real patient identity. */
+export const CASE_REF_PREFIX = 'EM-';

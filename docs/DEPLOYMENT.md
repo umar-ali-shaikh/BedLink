@@ -18,10 +18,9 @@ put no secrets in `VITE_*`.
 1. **MongoDB Atlas** cluster (free tier is a replica set → `MONGO_TRANSACTIONS=true`).
    Network access: allow your host's egress IPs (or `0.0.0.0/0` for a hackathon).
 2. A `JWT_SECRET` of 32+ random characters (`openssl rand -hex 32`).
-3. Demo data: either set `SEED_DEMO_ON_EMPTY=true` on the server (loads it at startup only
-   while the database has no users and no hospitals — safe to leave on), or seed from your machine:
-   `cd server && MONGO_URI=... JWT_SECRET=... npm run seed`
-   (with `NODE_ENV=production` it refuses unless `SEED_ALLOW_PRODUCTION=true` — it wipes the DB).
+3. No demo data in production. If an older deploy loaded sample data, set `PURGE_DEMO_DATA=true`
+   once (or leave it on) — it removes only the sample users/hospitals.
+4. Set `ADMIN_EMAIL` + `ADMIN_PASSWORD` (10+ characters) so you can open `/admin/verifications`.
 
 ## Option A — one service, one URL (recommended)
 
@@ -63,7 +62,6 @@ server. Leave `VITE_API_URL`/`VITE_SOCKET_URL` unset; set `TRUST_PROXY=1`, `COOK
 - [ ] `CLIENT_ORIGIN` exactly matches the browser origin (scheme + host, no trailing slash)
 - [ ] Login works and the header shows **LIVE** (socket connected)
 - [ ] `VITE_FRESHNESS_*` / `VITE_MATCH_CRITICAL_LOAD` equal the server's values if you changed them
-- [ ] `VITE_SHOW_DEMO_ACCOUNTS=false` for anything beyond a demo
 - [ ] Free tiers sleep: hit `/api/health` a minute before a demo
 - [ ] `DNS_SERVERS=8.8.8.8,8.8.4.4` only if the host can't resolve Atlas SRV records
 - [ ] Hospitals that register start PENDING — verify them with `npm run hospitals` (run it

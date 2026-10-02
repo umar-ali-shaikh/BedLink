@@ -18,6 +18,7 @@ export const ERROR_CODES = Object.freeze({
   BED_NOT_AVAILABLE: { status: 409, message: 'No matching bed is available anymore' },
   DUPLICATE_RESERVATION: { status: 409, message: 'This bed or request already has an active reservation' },
   RESERVATION_EXPIRED: { status: 409, message: 'This reservation has expired' },
+  GEOCODER_UNAVAILABLE: { status: 503, message: 'Address search is unavailable right now — try again shortly' },
   RATE_LIMITED: { status: 429, message: 'Too many requests, please slow down' },
   INTERNAL_ERROR: { status: 500, message: 'Something went wrong' },
 });

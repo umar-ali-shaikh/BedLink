@@ -21,9 +21,6 @@ function GoogleSection({ onCredential }) {
   );
 }
 
-/** Quick-fill buttons for seeded demo accounts (VITE_DEMO_ACCOUNTS / VITE_SHOW_DEMO_ACCOUNTS). */
-const DEMO_ACCOUNTS = config.demoAccounts;
-const SHOW_DEMO = config.showDemoAccounts && DEMO_ACCOUNTS.length > 0;
 
 export function LoginForm() {
   const { login, loginWithGoogle } = useAuth();
@@ -72,11 +69,6 @@ export function LoginForm() {
     }
   };
 
-  const fill = (account) => {
-    setEmail(account.email);
-    setPassword(account.password);
-    setError('');
-  };
 
   return (
     <div className="w-full max-w-[360px]">
@@ -95,7 +87,7 @@ export function LoginForm() {
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@bedlink.demo"
+              placeholder="you@example.com"
               className="input h-11"
               aria-invalid={!!error}
               autoFocus
@@ -160,19 +152,6 @@ export function LoginForm() {
         </div>
       </div>
 
-      {SHOW_DEMO && (
-        <div className="mt-4 text-center text-small text-text-subtle">
-          <p>
-            Demo accounts:{' '}
-            {DEMO_ACCOUNTS.map((a) => (
-              <button key={a.label} type="button" onClick={() => fill(a)} className="mx-1.5 font-semibold text-primary hover:underline">
-                {a.label}
-              </button>
-            ))}
-          </p>
-          <p className="text-[12px] mt-1">Simulated data · hackathon build</p>
-        </div>
-      )}
     </div>
   );
 }

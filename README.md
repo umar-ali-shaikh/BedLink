@@ -83,8 +83,9 @@ Two panels with public self-registration (`/register`), plus an admin verificati
 | Admin | `/admin/verifications` — approve/reject hospitals and ambulances |
 | Hospital (mobile-first) | `/register/hospital`, `/hospital/dashboard` (incoming request with Accept/Reject, counters, Confirm all, load), `/hospital/beds` (add beds, one-tap status), `/hospital/requests`, `/hospital/profile` |
 
-The admin panel is only for verification (below). The login page has one-click demo account buttons (hide them with
-`VITE_SHOW_DEMO_ACCOUNTS=false`).
+The admin panel is only for verification (below). Locations are entered by searching an
+address or place name (or GPS) — `GET /api/geocode/search` proxies OpenStreetMap Nominatim
+(`GEOCODER_URL`, cached, rate-limited); there is no map pin-dropping.
 
 ### Google sign-in
 
@@ -128,9 +129,12 @@ Everything is configured by env (`server/.env.example`, `client/.env.example`). 
 Render → New → Blueprint → this repo (`render.yaml`: one service serving API + app on one URL).
 Details and the Vercel + Render option: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## Demo accounts
+## Local development data
 
-Created by `npm run seed`. Demo-only passwords — never reuse them anywhere.
+`npm run seed` (local databases only — it refuses Atlas) loads sample hospitals and these
+accounts for development and tests. Production has no demo data: it starts empty and fills
+with real registrations. `PURGE_DEMO_DATA=true` (or `npm run demo:purge`) removes sample data
+from a database that has it.
 
 | Role | Email | Password |
 |---|---|---|

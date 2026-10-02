@@ -39,7 +39,7 @@ const pendingOfferFor = (emergencyId) => HospitalRequest.findOne({ emergencyId, 
 describe('create emergency', () => {
   it('stores a demo patient id, ranked candidates and exclusions', async () => {
     const e = await createEmergency();
-    expect(e.demoPatientId).toMatch(/^DEMO-P-\d{4}$/);
+    expect(e.demoPatientId).toMatch(/^EM-\d{4}$/);
     expect(e.status).toBe('SEARCHING');
     expect(e.patientLocation).toEqual(PATIENT);
     expect(e.candidates.map((c) => c.hospitalName)).toEqual([

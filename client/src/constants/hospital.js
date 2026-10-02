@@ -30,5 +30,3 @@ export const LOAD_PRESETS = [
 /** Mirrors server MATCH_CRITICAL_LOAD (VITE_MATCH_CRITICAL_LOAD). */
 export const CRITICAL_LOAD = config.criticalLoad;
 
-/** Default patient location (VITE_DEFAULT_LAT / VITE_DEFAULT_LNG). */
-export const DEFAULT_PATIENT_LOCATION = config.defaultLocation;
