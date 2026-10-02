@@ -1,4 +1,3 @@
-import dns from 'node:dns';
 import http from 'node:http';
 import { env } from './config/env.js';
 import { connectDB, disconnectDB, ensureIndexes } from './config/db.js';
@@ -12,14 +11,7 @@ import { clearAllOfferTimeouts, restorePendingTimers } from './services/emergenc
 import { startSweeper, stopSweeper, sweepOnce } from './services/sweeper.js';
 import { errorMeta, logger } from './utils/logger.js';
 
-/** Opt-in DNS override (DNS_SERVERS) for networks whose resolver can't look up Atlas SRV records. */
-function configureDns() {
-  dns.setDefaultResultOrder('ipv4first');
-  if (env.DNS_SERVER_LIST.length) dns.setServers(env.DNS_SERVER_LIST);
-}
-
 async function start() {
-  configureDns();
   await connectDB();
   await ensureIndexes();
   if (env.PURGE_DEMO_DATA) await purgeDemoData();

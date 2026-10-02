@@ -1,11 +1,36 @@
+import dns from 'node:dns';
 import mongoose from 'mongoose';
 import { env } from './env.js';
 import { logger } from '../utils/logger.js';
 
 mongoose.set('strictQuery', true);
 
+const FALLBACK_DNS = ['8.8.8.8', '1.1.1.1'];
+
+/** Opt-in DNS override (DNS_SERVERS) for networks whose resolver can't look up Atlas SRV records. */
+function configureDns() {
+  dns.setDefaultResultOrder('ipv4first');
+  if (env.DNS_SERVER_LIST.length) dns.setServers(env.DNS_SERVER_LIST);
+}
+
+/** The local resolver refused or couldn't answer the mongodb+srv lookup (common on Windows/ISP DNS). */
+function isSrvLookupFailure(err, uri) {
+  return uri.startsWith('mongodb+srv://') && /querySrv|queryTxt/.test(err?.message ?? '');
+}
+
 export async function connectDB(uri = env.MONGO_URI) {
-  await mongoose.connect(uri, { serverSelectionTimeoutMS: 10_000 });
+  configureDns();
+  try {
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 10_000 });
+  } catch (err) {
+    if (env.DNS_SERVER_LIST.length || !isSrvLookupFailure(err, uri)) throw err;
+    logger.warn('mongo.srv_lookup_failed_retrying_public_dns', {
+      error: err.message,
+      servers: FALLBACK_DNS,
+    });
+    dns.setServers(FALLBACK_DNS);
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 10_000 });
+  }
   logger.info('mongo.connected', { host: mongoose.connection.host });
   return mongoose.connection;
 }
