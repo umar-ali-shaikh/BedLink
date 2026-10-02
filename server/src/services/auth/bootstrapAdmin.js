@@ -8,8 +8,18 @@ import { hashPassword } from './password.js';
  * ADMIN_EMAIL + ADMIN_PASSWORD → make sure that admin exists with that password (creates it,
  * or resets the password/role so a leaked demo password can be rotated from the host's env).
  */
+export const ADMIN_PASSWORD_MIN = 10;
+
 export async function ensureAdmin() {
   if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) return;
+  // A weak password must not take the whole service down — skip and say why.
+  if (env.ADMIN_PASSWORD.length < ADMIN_PASSWORD_MIN) {
+    logger.warn('admin.skipped_weak_password', {
+      email: env.ADMIN_EMAIL,
+      hint: `ADMIN_PASSWORD must be at least ${ADMIN_PASSWORD_MIN} characters; admin was not created or updated`,
+    });
+    return;
+  }
   const email = env.ADMIN_EMAIL.toLowerCase();
   const passwordHash = await hashPassword(env.ADMIN_PASSWORD);
   const existing = await User.findOne({ email });

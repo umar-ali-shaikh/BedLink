@@ -60,6 +60,18 @@ describe('admin bootstrap', () => {
       Object.assign(env, { ADMIN_EMAIL: undefined, ADMIN_PASSWORD: undefined });
     }
   });
+
+  it('a too-short ADMIN_PASSWORD is skipped, not fatal, and does not change the existing password', async () => {
+    const { ensureAdmin } = await import('../src/services/auth/bootstrapAdmin.js');
+    Object.assign(env, { ADMIN_EMAIL: 'admin@bedlink.demo', ADMIN_PASSWORD: 'short' });
+    try {
+      await expect(ensureAdmin()).resolves.toBeUndefined();
+      const res = await request().post('/api/auth/login').send({ email: 'admin@bedlink.demo', password: 'Admin@123' });
+      expect(res.status).toBe(200);
+    } finally {
+      Object.assign(env, { ADMIN_EMAIL: undefined, ADMIN_PASSWORD: undefined });
+    }
+  });
 });
 
 describe('ambulance registration', () => {
