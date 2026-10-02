@@ -454,8 +454,7 @@ Both cancels flip the booking first, then run the existing emergency cancel (pen
 | `POST /api/auth/login` | public (rate-limited 10/min/IP) | Sets `bl_token`; returns user |
 | `POST /api/auth/register/ambulance` | public (rate-limited) | Creates an active DISPATCHER (ambulance) account with `{ vehicleNumber, ambulanceType, organization }`; signs in |
 | `POST /api/auth/register/hospital` | public (rate-limited) | `{ hospital, contact }` → Hospital (`verificationStatus: PENDING`, `status: INACTIVE`) + HOSPITAL user; signs in. Unverified hospitals are excluded from matching, `/hospitals` and `/hospitals/nearby` for non-admins. Verified with `npm run hospitals -- verify` |
-| `GET /api/auth/config` | public | `{ googleClientId, registrationEnabled }` for the login/register screens |
-| `POST /api/auth/google` | public (rate-limited) | `{ credential }` (Google ID token) → signs in an existing account (links by email); unknown email → `404 GOOGLE_ACCOUNT_NOT_FOUND` with `details` email/name. Registration bodies accept `googleCredential` instead of a password |
+| `GET /api/auth/config` | public | `{ registrationEnabled }` for the login/register screens |
 | `POST /api/auth/logout` | any authenticated | Clears cookie |
 | `GET /api/auth/me` | any authenticated | Current user (+ hospital summary for HOSPITAL) |
 

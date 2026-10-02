@@ -1,6 +1,5 @@
 import { AUTH_COOKIE_NAME, authCookieOptions } from '../config/cookie.js';
-import { describeUser, login as loginUser, loginWithGoogle } from '../services/auth/index.js';
-import { googleEnabled } from '../services/auth/google.js';
+import { describeUser, login as loginUser } from '../services/auth/index.js';
 import { env } from '../config/env.js';
 import {
   registerAmbulance as registerAmbulanceUser,
@@ -34,16 +33,9 @@ const signedIn = (register) => async (req, res) => {
 export const registerAmbulance = signedIn(registerAmbulanceUser);
 export const registerHospital = signedIn(registerHospitalUser);
 
-export async function google(req, res) {
-  const { token, user } = await loginWithGoogle(req.body.credential);
-  res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions());
-  return ok(res, { user });
-}
-
 /** Public: what the login/register screens should offer. */
 export function config(_req, res) {
   return ok(res, {
-    googleClientId: googleEnabled() ? (env.GOOGLE_CLIENT_ID ?? null) : null,
     registrationEnabled: env.REGISTRATION_ENABLED,
   });
 }

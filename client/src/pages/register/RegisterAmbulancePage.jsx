@@ -16,12 +16,10 @@ import {
 import { ROUTES } from '../../constants/routes';
 import { errorMessage } from '../../services/api';
 import { cn } from '../../utils/cn';
-import { useGoogleSignup } from '../../features/auth/useGoogleSignup';
-import { GoogleSignupBlock } from '../../features/auth/GoogleSignupBlock';
 
 const EMPTY = { name: '', phone: '', email: '', password: '', confirm: '', vehicleNumber: '', ambulanceType: 'ALS', driverName: '', licenceNumber: '', organization: '' };
 
-function validate(f, google) {
+function validate(f) {
   const e = {};
   if (f.name.trim().length < 2) e.name = 'Enter your full name';
   if (!PHONE_PATTERN.test(normalisePhone(f.phone))) e.phone = 'Enter a valid 10-digit mobile number';
@@ -29,19 +27,16 @@ function validate(f, google) {
   if (!VEHICLE_NUMBER_PATTERN.test(normaliseVehicle(f.vehicleNumber))) e.vehicleNumber = 'e.g. MH01AB1234';
   if (f.driverName.trim().length < 2) e.driverName = 'Enter the driver full name';
   if (!LICENCE_NUMBER_PATTERN.test(normaliseLicence(f.licenceNumber))) e.licenceNumber = '15 characters, e.g. MH14 2011 0062821';
-  if (!google) {
-    const pw = PASSWORD_RULE(f.password);
-    if (pw) e.password = pw;
-    if (f.confirm !== f.password) e.confirm = 'Passwords do not match';
-  }
+  const pw = PASSWORD_RULE(f.password);
+  if (pw) e.password = pw;
+  if (f.confirm !== f.password) e.confirm = 'Passwords do not match';
   return e;
 }
 
 export function RegisterAmbulancePage() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const { google, accept, clear } = useGoogleSignup((g) => setForm((f) => ({ ...f, name: f.name || g.name, email: g.email })));
-  const [form, setForm] = useState(() => ({ ...EMPTY, name: google?.name ?? '', email: google?.email ?? '' }));
+  const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,7 +44,7 @@ export function RegisterAmbulancePage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    const found = validate(form, google);
+    const found = validate(form);
     setErrors(found);
     setFormError('');
     if (Object.keys(found).length) return;
@@ -58,7 +53,7 @@ export function RegisterAmbulancePage() {
       await register('ambulance', {
         name: form.name.trim(),
         email: form.email.trim(),
-        ...(google ? { googleCredential: google.credential } : { password: form.password }),
+        password: form.password,
         phone: normalisePhone(form.phone),
         vehicleNumber: normaliseVehicle(form.vehicleNumber),
         ambulanceType: form.ambulanceType,
@@ -81,7 +76,6 @@ export function RegisterAmbulancePage() {
 
   return (
     <RegisterShell title="Register ambulance" subtitle="For ambulance crews and drivers. Our team verifies your vehicle, then you can request beds." back={ROUTES.REGISTER}>
-      <GoogleSignupBlock google={google} onCredential={accept} onClear={clear} />
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Field id="name" label="Full name" error={errors.name}>
           {input('name', { autoComplete: 'name' })}
@@ -127,9 +121,8 @@ export function RegisterAmbulancePage() {
           {input('organization', { placeholder: 'e.g. 108 Emergency Service' })}
         </Field>
         <Field id="email" label="Email (your login)" error={errors.email}>
-          {input('email', { type: 'email', autoComplete: 'email', readOnly: !!google, className: cn('input h-11', google && 'bg-surface-muted text-text-muted') })}
+          {input('email', { type: 'email', autoComplete: 'email' })}
         </Field>
-        {!google && (
         <div className="grid sm:grid-cols-2 gap-4">
           <Field id="password" label="Password" error={errors.password} hint="8+ characters with a number">
             {input('password', { type: 'password', autoComplete: 'new-password' })}
@@ -138,7 +131,6 @@ export function RegisterAmbulancePage() {
             {input('confirm', { type: 'password', autoComplete: 'new-password' })}
           </Field>
         </div>
-        )}
         {formError && (
           <p role="alert" className="text-small text-danger bg-danger-soft rounded-md px-3 py-2">
             {formError}

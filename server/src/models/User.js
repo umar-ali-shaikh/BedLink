@@ -23,7 +23,6 @@ const userSchema = new mongoose.Schema(
       },
     },
     isActive: { type: Boolean, default: true },
-    googleId: { type: String, default: undefined },
     phone: { type: String, trim: true, default: '' },
     /** Self-registered ambulances start PENDING; seeded/admin-created accounts are VERIFIED. */
     verificationStatus: { type: String, enum: VERIFICATION_STATUS_VALUES, default: VERIFICATION_STATUS.VERIFIED },
@@ -72,9 +71,5 @@ userSchema.index(
 );
 userSchema.index({ role: 1, verificationStatus: 1 });
 userSchema.index({ role: 1, 'ambulance.onDuty': 1, 'ambulance.locationAt': -1 });
-userSchema.index(
-  { googleId: 1 },
-  { unique: true, partialFilterExpression: { googleId: { $type: 'string' } }, name: 'unique_google_id' }
-);
 
 export const User = mongoose.model('User', userSchema);

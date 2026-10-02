@@ -49,7 +49,6 @@ ambulances that register and get approved.
 
 - **Node.js 20+** and npm
 - **MongoDB**: a free MongoDB Atlas cluster, or a local `mongod` running as a replica set (BedLink uses transactions for the bed lock)
-- Optional: a Google OAuth Web Client ID for "Sign in with Google"
 
 ### 1. Clone
 
@@ -182,7 +181,7 @@ Everything is configured through environment variables. The steps for each optio
 - Real-time updates over Socket.IO: bed changes, offers, decisions, verification and connection status.
 - **No double booking.** The accepted bed is locked inside a MongoDB transaction.
 - A background sweeper expires timed-out offers and holds, and recovers timers after a restart.
-- Google sign-in. Cookie-based JWT auth with role guards (ADMIN / DISPATCHER / HOSPITAL). Helmet CSP, rate limits, and Zod validation on every request.
+- Email + password login with cookie-based JWT auth with role guards (ADMIN / DISPATCHER / HOSPITAL). Helmet CSP, rate limits, and Zod validation on every request.
 - Responsive on desktop, tablet and phone.
 
 ## 4. Technology Stack
@@ -190,7 +189,7 @@ Everything is configured through environment variables. The steps for each optio
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, Vite 5, Tailwind CSS 3, TanStack Query 5, React Router, socket.io-client, React-Leaflet (OpenStreetMap), lucide-react, Zod |
-| Backend | Node.js 20+, Express 5, Socket.IO 4, Mongoose 9, Zod 4, bcrypt, jsonwebtoken, google-auth-library, helmet, express-rate-limit |
+| Backend | Node.js 20+, Express 5, Socket.IO 4, Mongoose 9, Zod 4, bcrypt, jsonwebtoken, helmet, express-rate-limit |
 | Database | MongoDB Atlas (replica set: transactions, geo and partial unique indexes, TTL indexes) |
 | Location | OpenStreetMap Nominatim geocoding (proxied, cached and rate-limited by the server); browser Geolocation API |
 | Testing & quality | Vitest, Supertest, mongodb-memory-server, ESLint, Prettier |
@@ -300,14 +299,13 @@ default on). The fictional hospitals used by the automated tests live only in `s
 |---|---|
 | OpenStreetMap **Nominatim** | Address or place-name search, and reverse geocoding from GPS. The server proxies it at `GET /api/geocode/search` and `/reverse`. Results are cached, rate-limited and limited to India by default (`GEOCODER_URL`, `GEOCODER_EMAIL`, `GEOCODER_COUNTRY`). |
 | OpenStreetMap tiles | Maps (Leaflet) |
-| **Google Identity Services** | Sign in / sign up with Google (`GOOGLE_CLIENT_ID`) |
 | ABDM Health Facility Registry, Parivahan Sarathi | Reference links on the admin desk, used for manual checks only |
 
 **BedLink REST API.** Every route is under `/api`. Responses look like `{ success, data }` or `{ success: false, message, code }`.
 
 | Area | Main endpoints |
 |---|---|
-| Auth | `POST /auth/login`, `/auth/register/hospital`, `/auth/register/ambulance`, `/auth/google`, `/auth/logout`, `GET /auth/me` |
+| Auth | `POST /auth/login`, `/auth/register/hospital`, `/auth/register/ambulance`, `/auth/logout`, `GET /auth/me` |
 | Hospitals & beds | `GET /hospitals`, `PATCH /hospitals/:id`, `GET/POST /hospitals/:id/beds`, `POST /hospitals/:id/beds/confirm`, `PATCH /beds/:id` |
 | Emergencies | `POST /emergencies` (ranks hospitals), `POST /emergencies/:id/request-hospital`, `GET /emergencies/:id`, `POST /emergencies/:id/cancel` |
 | Hospital requests | `GET /hospital-requests`, `POST /hospital-requests/:id/accept`, `/reject` |
@@ -354,7 +352,7 @@ tiles because the machine that took them had no internet access.
 - English only.
 
 **Future scope**
-- Live-traffic routing (OSRM, Google or Mapbox) for real ETAs and turn-by-turn navigation for crews.
+- Live-traffic routing (OSRM or Mapbox) for real ETAs and turn-by-turn navigation for crews.
 - SMS, WhatsApp and push alerts for hospitals and families, and IVR booking for feature phones.
 - Integration with ABDM Health Facility Registry and HMIS / bed-management systems, so beds update automatically.
 - A native or PWA app with offline queueing for low-network areas, and Hindi and regional languages.

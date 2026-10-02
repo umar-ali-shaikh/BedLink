@@ -74,8 +74,6 @@ export function AuthProvider({ children }) {
     [startSession]
   );
 
-  /** Google Identity Services credential → sign in (throws GOOGLE_ACCOUNT_NOT_FOUND for new emails). */
-  const loginWithGoogle = useCallback(async (credential) => startSession(await authApi.google(credential)), [startSession]);
 
   /** Re-read /auth/me (e.g. to pick up an admin verification decision). */
   const refreshUser = useCallback(async () => {
@@ -93,8 +91,8 @@ export function AuthProvider({ children }) {
   }, [clearSession]);
 
   const value = useMemo(
-    () => ({ user, isLoading, login, loginWithGoogle, register, refreshUser, logout }),
-    [user, isLoading, login, loginWithGoogle, register, refreshUser, logout]
+    () => ({ user, isLoading, login, register, refreshUser, logout }),
+    [user, isLoading, login, register, refreshUser, logout]
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

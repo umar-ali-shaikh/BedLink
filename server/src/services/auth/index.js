@@ -1,12 +1,10 @@
 import mongoose from 'mongoose';
 import { ROLES } from '../../constants/roles.js';
-import { User } from '../../models/index.js';
 import { hospitalRepo } from '../../repositories/hospitalRepo.js';
 import { userRepo } from '../../repositories/userRepo.js';
 import { AppError } from '../../utils/AppError.js';
 import { burnPasswordCheck, verifyPassword } from './password.js';
 import { signToken, verifyToken } from './token.js';
-import { verifyGoogleCredential } from './google.js';
 
 /** The request-scoped user shape (`req.user`, `socket.data.user`). */
 export function toAuthUser(doc) {
@@ -30,29 +28,6 @@ export async function login({ email, password }) {
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid || !user.isActive) throw new AppError('INVALID_CREDENTIALS');
 
-  const authUser = toAuthUser(user);
-  return { token: signToken(authUser), user: await describeUser(authUser) };
-}
-
-/**
- * Google sign-in for an existing account (matched by Google ID, else by email — which links
- * it). Unknown Google emails get GOOGLE_ACCOUNT_NOT_FOUND with the email/name to prefill
- * registration.
- */
-export async function loginWithGoogle(credential) {
-  const google = await verifyGoogleCredential(credential);
-  const user = (await User.findOne({ googleId: google.googleId })) ?? (await User.findOne({ email: google.email }));
-  if (!user) {
-    throw new AppError('GOOGLE_ACCOUNT_NOT_FOUND', undefined, undefined, [
-      { path: 'email', message: google.email },
-      { path: 'name', message: google.name },
-    ]);
-  }
-  if (!user.isActive) throw new AppError('INVALID_CREDENTIALS');
-  if (!user.googleId) {
-    await User.updateOne({ _id: user._id }, { $set: { googleId: google.googleId } });
-    user.googleId = google.googleId;
-  }
   const authUser = toAuthUser(user);
   return { token: signToken(authUser), user: await describeUser(authUser) };
 }

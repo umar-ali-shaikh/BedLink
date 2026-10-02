@@ -29,8 +29,6 @@ services:
         value: 'true'
       - key: GEOCODER_EMAIL
         sync: false
-      - key: GOOGLE_CLIENT_ID
-        sync: false
       # Verification panel login (https://<app>/login → /admin/verifications)
       - key: ADMIN_EMAIL
         sync: false

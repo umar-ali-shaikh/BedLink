@@ -8,22 +8,9 @@ import { HOME_BY_ROLE, ROUTES } from '../../constants/routes';
 import { errorMessage } from '../../services/api';
 
 import { config } from '../../config';
-import { GoogleButton, OrDivider, decodeGoogleCredential, useAuthConfig } from './GoogleButton';
-
-function GoogleSection({ onCredential }) {
-  const { data } = useAuthConfig();
-  if (!data?.googleClientId) return null;
-  return (
-    <>
-      <OrDivider />
-      <GoogleButton onCredential={onCredential} text="signin_with" className="flex justify-center" />
-    </>
-  );
-}
-
 
 export function LoginForm() {
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -54,21 +41,6 @@ export function LoginForm() {
     const prefix = home.split('/')[1];
     return navigate(from && from.startsWith(`/${prefix}/`) ? from : home, { replace: true });
   };
-
-  /** Google: existing account → signed in; new email → registration, prefilled with it. */
-  const onGoogle = async (credential) => {
-    setError('');
-    try {
-      goHome(await loginWithGoogle(credential));
-    } catch (err) {
-      if (err.code === 'GOOGLE_ACCOUNT_NOT_FOUND') {
-        navigate(ROUTES.REGISTER, { state: { google: { credential, ...decodeGoogleCredential(credential) } } });
-        return;
-      }
-      setError(errorMessage(err));
-    }
-  };
-
 
   return (
     <div className="w-full max-w-[360px]">
@@ -143,8 +115,6 @@ export function LoginForm() {
             </span>
           </Button>
         </form>
-
-        <GoogleSection onCredential={onGoogle} />
 
         <div className="mt-5 grid grid-cols-2 gap-2">
           <Link to={ROUTES.REGISTER_AMBULANCE} className="h-10 px-2 rounded-md border border-border text-[13px] font-semibold text-text flex items-center justify-center hover:border-primary hover:text-primary">

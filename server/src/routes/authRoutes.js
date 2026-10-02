@@ -4,7 +4,7 @@ import { authenticate } from '../middleware/authenticate.js';
 import { loginLimiter, registerLimiter } from '../middleware/rateLimit.js';
 import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { googleSchema, loginSchema, registerAmbulanceSchema, registerHospitalSchema } from '../validators/auth.js';
+import { loginSchema, registerAmbulanceSchema, registerHospitalSchema } from '../validators/auth.js';
 
 const router = Router();
 
@@ -22,7 +22,6 @@ router.post(
   asyncHandler(auth.registerHospital)
 );
 router.get('/config', auth.config);
-router.post('/google', loginLimiter, validate(googleSchema), asyncHandler(auth.google));
 router.post('/logout', authenticate, auth.logout);
 router.get('/me', authenticate, asyncHandler(auth.me));
 

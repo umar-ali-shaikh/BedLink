@@ -56,8 +56,6 @@ const envSchema = z.object({
   /** Checked in ensureAdmin (a weak value is skipped with a warning; it never stops the server). */
   ADMIN_PASSWORD: z.preprocess((v) => (v === '' ? undefined : v), z.string().optional()),
   ADMIN_NAME: z.string().default('BedLink Admin'),
-  /** Google Identity Services OAuth client ID (Web). Unset = Google sign-in disabled. */
-  GOOGLE_CLIENT_ID: z.string().optional(),
   /** Nominatim-compatible geocoder for address search (default: OpenStreetMap's public one). */
   GEOCODER_URL: z.string().default('https://nominatim.openstreetmap.org'),
   /** Contact email sent to the geocoder (Nominatim asks for one). */

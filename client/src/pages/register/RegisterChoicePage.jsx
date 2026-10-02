@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Ambulance, Building2, ChevronRight, ShieldCheck } from 'lucide-react';
 import { RegisterShell } from '../../features/auth/RegisterShell';
 import { ROUTES } from '../../constants/routes';
@@ -22,17 +22,11 @@ const OPTIONS = [
 ];
 
 export function RegisterChoicePage() {
-  const google = useLocation().state?.google;
   return (
     <RegisterShell title="Create an account" subtitle="Who is registering?">
-      {google?.email && (
-        <p className="mb-4 rounded-md border border-primary/20 bg-primary-soft/60 px-3 py-2.5 text-small text-text" role="status">
-          No BedLink account uses <strong>{google.email}</strong> yet. Choose who you are to finish registering with Google.
-        </p>
-      )}
       <div className="space-y-3">
         {OPTIONS.map(({ to, icon: Icon, title, text, note }) => (
-          <Link key={to} to={to} state={google ? { google } : undefined} className="flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary-soft/40 transition-colors">
+          <Link key={to} to={to} className="flex items-center gap-4 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary-soft/40 transition-colors">
             <span className="w-12 h-12 rounded-md bg-primary-soft text-primary flex items-center justify-center shrink-0">
               <Icon className="w-6 h-6" aria-hidden />
             </span>

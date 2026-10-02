@@ -7,5 +7,4 @@ export const authApi = {
   registerAmbulance: (body) => api.post('/auth/register/ambulance', body),
   registerHospital: (body) => api.post('/auth/register/hospital', body),
   config: () => api.get('/auth/config'),
-  google: (credential) => api.post('/auth/google', { credential }),
 };

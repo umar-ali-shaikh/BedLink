@@ -2,7 +2,6 @@ import supertest from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { env } from '../src/config/env.js';
 import { run as hospitalsCli } from '../src/utils/hospitals.js';
-import { setGoogleVerifier } from '../src/services/auth/google.js';
 import { ICU_VENT_CARDIO, app, loginAs, request, resetDb, startTestDb, stopTestDb } from './helpers/testServer.js';
 
 beforeAll(async () => {
@@ -10,7 +9,6 @@ beforeAll(async () => {
   await resetDb();
 });
 afterAll(async () => {
-  setGoogleVerifier(null);
   await stopTestDb();
 });
 
@@ -276,72 +274,37 @@ describe('hospital registration and verification', () => {
   });
 });
 
-describe('Google sign-in', () => {
-  const token = (email, sub = `g-${email}`) =>
-    JSON.stringify({ sub, email, email_verified: true, name: 'Google User' });
-  beforeAll(() => setGoogleVerifier(async (credential) => JSON.parse(credential)));
-
-  it('exposes the config the login page needs', async () => {
+describe('Email + password only (no Google sign-in)', () => {
+  it('exposes the config the login page needs, without a Google client', async () => {
     const res = await request().get('/api/auth/config');
-    expect(res.body.data).toMatchObject({ googleClientId: null, registrationEnabled: true });
+    expect(res.body.data).toEqual({ registrationEnabled: true });
   });
 
-  it('unknown Google email → GOOGLE_ACCOUNT_NOT_FOUND with the email to prefill', async () => {
+  it('has no Google sign-in endpoint', async () => {
     const res = await request()
       .post('/api/auth/google')
-      .send({ credential: token('new@gmail.test') });
+      .send({ credential: 'x'.repeat(30) });
     expect(res.status).toBe(404);
-    expect(res.body.code).toBe('GOOGLE_ACCOUNT_NOT_FOUND');
-    expect(res.body.details[0]).toEqual({ path: 'email', message: 'new@gmail.test' });
   });
 
-  it('registers with Google (no password) and signs in again with Google', async () => {
-    const agent = supertest.agent(app);
-    const reg = await agent.post('/api/auth/register/ambulance').send(
-      ambulance({
-        email: 'new@gmail.test',
-        vehicleNumber: 'MH04CD3333',
-        password: undefined,
-        googleCredential: token('new@gmail.test'),
-      })
-    );
-    expect(reg.status).toBe(201);
-    expect(reg.body.data.user.verificationStatus).toBe('PENDING');
-
-    const login = await request()
-      .post('/api/auth/google')
-      .send({ credential: token('new@gmail.test') });
-    expect(login.status).toBe(200);
-    expect(login.headers['set-cookie'][0]).toMatch(/^bl_token=/);
+  it('needs a password to register', async () => {
+    const res = await request()
+      .post('/api/auth/register/ambulance')
+      .send(ambulance({ email: 'nopw@x.test', vehicleNumber: 'MH04CD5555', password: undefined }));
+    expect(res.status).toBe(400);
   });
 
-  it('refuses a Google token for a different email than the form', async () => {
+  it('rejects a Google credential in place of a password', async () => {
     const res = await request()
       .post('/api/auth/register/ambulance')
       .send(
         ambulance({
-          email: 'typed@x.test',
+          email: 'g@x.test',
           vehicleNumber: 'MH04CD4444',
           password: undefined,
-          googleCredential: token('other@gmail.test'),
+          googleCredential: 'x'.repeat(30),
         })
       );
-    expect(res.status).toBe(400);
-    expect(res.body.details[0].path).toBe('email');
-  });
-
-  it('links Google to an existing email account', async () => {
-    const res = await request()
-      .post('/api/auth/google')
-      .send({ credential: token('lakeside@bedlink.demo') });
-    expect(res.status).toBe(200);
-    expect(res.body.data.user.role).toBe('HOSPITAL');
-  });
-
-  it('needs a password or Google credential to register', async () => {
-    const res = await request()
-      .post('/api/auth/register/ambulance')
-      .send(ambulance({ email: 'nopw@x.test', vehicleNumber: 'MH04CD5555', password: undefined }));
     expect(res.status).toBe(400);
   });
 });
