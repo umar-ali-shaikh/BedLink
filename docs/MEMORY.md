@@ -70,6 +70,7 @@ Recorded while writing the docs, so the code follows them from day one.
 | 19 | Socket payload | `bed:updated` for Confirm all sends `bedId: null` + `confirmed` count. | ARCH §9.3 |
 | 20 | Accept failure | In transaction mode a failed bed lock rolls the whole accept back, then the offer goes `PENDING → REJECTED (NO_BED_AT_ACCEPT)` and fallback runs; without transactions it goes `ACCEPTED → REJECTED` and the lock is compensated. | ARCH §11.3, §13.3 |
 | 21 | Rate limits | Disabled when `NODE_ENV=test` so the suite can log in repeatedly. | ARCH §14 |
+| 22 | Rate limits | Login limit configurable via `LOGIN_RATE_LIMIT_PER_MINUTE` (default 10) so the full Postman collection (≈14 logins in a few seconds) can run locally. | ARCH §14–§15 |
 
 ### Notes
 

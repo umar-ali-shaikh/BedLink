@@ -25,6 +25,7 @@ const envSchema = z.object({
   OFFER_TIMEOUT_SECONDS: positiveNumber.default(120),
   RESERVATION_HOLD_MINUTES: positiveNumber.default(30),
   SWEEPER_INTERVAL_SECONDS: positiveNumber.default(10),
+  LOGIN_RATE_LIMIT_PER_MINUTE: positiveInt.default(10),
 
   FRESHNESS_FRESH_SECONDS: positiveInt.default(120),
   FRESHNESS_RECENT_SECONDS: positiveInt.default(600),

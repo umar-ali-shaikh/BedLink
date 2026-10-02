@@ -1,0 +1,1511 @@
+{
+  "info": {
+    "name": "BedLink API",
+    "description": "End-to-end checks for the BedLink backend (58 requests, ~110 assertions).\n\n1. In .env set LOGIN_RATE_LIMIT_PER_MINUTE=100 (the collection logs in ~14 times; the default limit is 10/min) and restart the server.\n2. Run `npm run seed` (fresh demo data) before every full run.\n3. Run the whole collection in order with the Collection Runner.\n\nPostman keeps the bl_token cookie; each 'Login as \u2026' request switches the user. IDs are saved into collection variables automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 Health & auth",
+      "description": "Login, wrong password, RBAC.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok', () => pm.expect(pm.response.json().data.status).to.eql('ok'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout (clean start)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        },
+        {
+          "name": "Me without login \u2192 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('code UNAUTHORIZED', () => pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login wrong password \u2192 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@bedlink.demo\",\n  \"password\": \"wrong\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('code INVALID_CREDENTIALS', () => pm.expect(pm.response.json().code).to.eql('INVALID_CREDENTIALS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login unknown email \u2192 same 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ghost@bedlink.demo\",\n  \"password\": \"wrong\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('code INVALID_CREDENTIALS', () => pm.expect(pm.response.json().code).to.eql('INVALID_CREDENTIALS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login bad input \u2192 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as dispatcher1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dispatcher1@bedlink.demo\",\n  \"password\": \"Dispatch@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('dispatcher1@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me (dispatcher)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('DISPATCHER', () => pm.expect(pm.response.json().data.user.role).to.eql('DISPATCHER'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dispatcher \u2192 admin endpoint \u2192 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code FORBIDDEN', () => pm.expect(pm.response.json().code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Dispatcher: hospitals & emergency",
+      "description": "Map data, matching and validation.",
+      "item": [
+        {
+          "name": "Login as dispatcher1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dispatcher1@bedlink.demo\",\n  \"password\": \"Dispatch@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('dispatcher1@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List hospitals (bed summary + freshness)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/hospitals"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('12 hospitals', () => pm.expect(pm.response.json().data.length).to.eql(12));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nearby hospitals (10 km)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/hospitals/nearby?lat=19.076&lng=72.8777&radiusKm=10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('has etaMinutes', () => pm.expect(pm.response.json().data[0]).to.have.property('etaMinutes'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create emergency: invalid \u2192 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/emergencies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientLocation\": {\n    \"lat\": 200,\n    \"lng\": 72\n  },\n  \"requirements\": {\n    \"bedType\": \"SPACESHIP\"\n  },\n  \"patientName\": \"Not allowed\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create emergency ICU+Vent+Cardio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/emergencies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientLocation\": {\n    \"lat\": 19.076,\n    \"lng\": 72.8777\n  },\n  \"requirements\": {\n    \"bedType\": \"ICU\",\n    \"equipment\": [\n      \"VENTILATOR\"\n    ],\n    \"specialties\": [\n      \"CARDIOLOGY\"\n    ]\n  },\n  \"urgency\": \"CRITICAL\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set('emergencyId', d.id);",
+                  "pm.test('demo patient id', () => pm.expect(d.demoPatientId).to.match(/^DEMO-P-/));",
+                  "pm.test('Lakeside ranked first', () => pm.expect(d.candidates[0].hospitalName).to.eql('Lakeside Medical Centre'));",
+                  "pm.test('candidates have reasons', () => pm.expect(d.candidates[0].reasons.length).to.be.above(3));",
+                  "pm.test('exclusions explain why not', () => pm.expect(d.exclusions.map(e => e.reasons[0])).to.include.members(['MISSING_EQUIPMENT','CRITICAL_LOAD','NO_MATCHING_BED','MISSING_SPECIALTY','HOSPITAL_INACTIVE','OUT_OF_RANGE']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request top hospital (2-min offer)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/emergencies/{{emergencyId}}/request-hospital"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('AWAITING_HOSPITAL', () => pm.expect(pm.response.json().data.status).to.eql('AWAITING_HOSPITAL'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request again \u2192 409 OFFER_ALREADY_PENDING",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/emergencies/{{emergencyId}}/request-hospital"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code OFFER_ALREADY_PENDING', () => pm.expect(pm.response.json().code).to.eql('OFFER_ALREADY_PENDING'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Hospital: reject \u2192 automatic fallback",
+      "description": "Lakeside gets the offer, City General cannot answer it, Lakeside rejects, City General gets it automatically.",
+      "item": [
+        {
+          "name": "Login as Lakeside staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"lakeside@bedlink.demo\",\n  \"password\": \"Hospital@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('lakeside@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lakeside pending queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/hospital-requests?status=PENDING"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json().data.requests;",
+                  "pm.test('one pending offer', () => pm.expect(r.length).to.eql(1));",
+                  "pm.collectionVariables.set('offerId', r[0].id);",
+                  "pm.test('CRITICAL', () => pm.expect(r[0].emergency.urgency).to.eql('CRITICAL'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lakeside: restricted emergency view",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/emergencies/{{emergencyId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('no dispatcher details', () => pm.expect(pm.response.json().data.dispatcherId).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as City General staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"citygeneral@bedlink.demo\",\n  \"password\": \"Hospital@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('citygeneral@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "City General accepts Lakeside's offer \u2192 403",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/hospital-requests/{{offerId}}/accept"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code FORBIDDEN', () => pm.expect(pm.response.json().code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Lakeside staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"lakeside@bedlink.demo\",\n  \"password\": \"Hospital@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('lakeside@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject without reason \u2192 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/hospital-requests/{{offerId}}/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lakeside rejects (NO_STAFF)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/hospital-requests/{{offerId}}/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"NO_STAFF\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('REJECTED', () => pm.expect(pm.response.json().data.status).to.eql('REJECTED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject again \u2192 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/hospital-requests/{{offerId}}/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"NO_STAFF\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code OFFER_ALREADY_RESOLVED', () => pm.expect(pm.response.json().code).to.eql('OFFER_ALREADY_RESOLVED'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Hospital: accept \u2192 bed reserved",
+      "description": "Fallback sent the offer to City General; it accepts and one bed is locked.",
+      "item": [
+        {
+          "name": "Login as City General staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"citygeneral@bedlink.demo\",\n  \"password\": \"Hospital@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('citygeneral@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "City General pending queue (fallback arrived)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/hospital-requests?status=PENDING"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json().data.requests;",
+                  "pm.test('fallback offer received', () => pm.expect(r.length).to.eql(1));",
+                  "pm.collectionVariables.set('offerId2', r[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "City General accepts",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/hospital-requests/{{offerId2}}/accept"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set('reservationId', d.reservation.id);",
+                  "pm.collectionVariables.set('reservedBedId', d.reservation.bedId);",
+                  "pm.test('emergency RESERVED', () => pm.expect(d.emergency.status).to.eql('RESERVED'));",
+                  "pm.test('reservation ACTIVE', () => pm.expect(d.reservation.status).to.eql('ACTIVE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accept again \u2192 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/hospital-requests/{{offerId2}}/accept"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code OFFER_ALREADY_RESOLVED', () => pm.expect(pm.response.json().code).to.eql('OFFER_ALREADY_RESOLVED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change RESERVED bed by hand \u2192 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/beds/{{reservedBedId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"AVAILABLE\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code INVALID_STATE_TRANSITION', () => pm.expect(pm.response.json().code).to.eql('INVALID_STATE_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Active reservations list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/reservations?status=ACTIVE"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('bed label', () => pm.expect(pm.response.json().data[0].bed.label).to.match(/^ICU-/));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Dispatcher: timeline",
+      "description": "Every step is in the timeline.",
+      "item": [
+        {
+          "name": "Login as dispatcher1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dispatcher1@bedlink.demo\",\n  \"password\": \"Dispatch@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('dispatcher1@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Emergency detail + timeline",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/emergencies/{{emergencyId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('RESERVED', () => pm.expect(d.status).to.eql('RESERVED'));",
+                  "pm.test('timeline order', () => pm.expect(d.timeline.map(t => t.event)).to.eql(['REQUEST_CREATED','MATCHING_COMPLETED','HOSPITAL_CONTACTED','HOSPITAL_REJECTED','HOSPITAL_CONTACTED','HOSPITAL_ACCEPTED','BED_RESERVED']));",
+                  "pm.test('fallback by SYSTEM', () => pm.expect(d.timeline[4].actor.type).to.eql('SYSTEM'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as dispatcher2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dispatcher2@bedlink.demo\",\n  \"password\": \"Dispatch@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('dispatcher2@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dispatcher2 cannot see it \u2192 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/emergencies/{{emergencyId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 Hospital: patient arrived",
+      "description": "Bed OCCUPIED, reservation FULFILLED, emergency COMPLETED.",
+      "item": [
+        {
+          "name": "Login as City General staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"citygeneral@bedlink.demo\",\n  \"password\": \"Hospital@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('citygeneral@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark arrived",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/arrive"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('FULFILLED', () => pm.expect(pm.response.json().data.status).to.eql('FULFILLED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Arrive again \u2192 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/reservations/{{reservationId}}/arrive"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 Hospital: beds",
+      "description": "One-tap status change, Confirm all, own hospital only.",
+      "item": [
+        {
+          "name": "Login as Lakeside staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"lakeside@bedlink.demo\",\n  \"password\": \"Hospital@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('lakeside@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me (hospital + its name)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const u = pm.response.json().data.user;",
+                  "pm.collectionVariables.set('lakesideId', u.hospitalId);",
+                  "pm.test('Lakeside', () => pm.expect(u.hospital.name).to.eql('Lakeside Medical Centre'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Own beds",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/hospitals/{{lakesideId}}/beds"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json().data.find(x => x.status === 'AVAILABLE' && x.type === 'GENERAL');",
+                  "pm.collectionVariables.set('bedId', b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bed \u2192 OCCUPIED",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/beds/{{bedId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"OCCUPIED\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('OCCUPIED', () => pm.expect(pm.response.json().data.status).to.eql('OCCUPIED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bed \u2192 RESERVED by hand \u2192 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/beds/{{bedId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"RESERVED\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bed \u2192 AVAILABLE",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/beds/{{bedId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"AVAILABLE\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm all",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/hospitals/{{lakesideId}}/beds/confirm"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('FRESH', () => pm.expect(pm.response.json().data.summary.freshness).to.eql('FRESH'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update own load",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/hospitals/{{lakesideId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentLoad\": 60\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rename own hospital \u2192 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/hospitals/{{lakesideId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mine\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "All hospitals list \u2192 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/hospitals"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 Dispatcher: cancel",
+      "description": "Cancel a pending request; the offer is withdrawn.",
+      "item": [
+        {
+          "name": "Login as dispatcher1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dispatcher1@bedlink.demo\",\n  \"password\": \"Dispatch@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('dispatcher1@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create emergency #2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/emergencies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientLocation\": {\n    \"lat\": 19.076,\n    \"lng\": 72.8777\n  },\n  \"requirements\": {\n    \"bedType\": \"ICU\",\n    \"equipment\": [\n      \"VENTILATOR\"\n    ],\n    \"specialties\": [\n      \"CARDIOLOGY\"\n    ]\n  },\n  \"urgency\": \"CRITICAL\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('emergencyId2', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request hospital",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/emergencies/{{emergencyId2}}/request-hospital"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/emergencies/{{emergencyId2}}/cancel"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CANCELLED', () => pm.expect(pm.response.json().data.status).to.eql('CANCELLED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel again \u2192 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/emergencies/{{emergencyId2}}/cancel"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('code INVALID_STATE_TRANSITION', () => pm.expect(pm.response.json().code).to.eql('INVALID_STATE_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 Admin",
+      "description": "Analytics and users.",
+      "item": [
+        {
+          "name": "Login as admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@bedlink.demo\",\n  \"password\": \"Admin@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role ok', () => pm.expect(pm.response.json().data.user.email).to.eql('admin@bedlink.demo'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Analytics overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/analytics/overview"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('has KPIs', () => { pm.expect(d.totalEmergencies).to.be.at.least(2); pm.expect(d.offers.accepted).to.be.at.least(1); pm.expect(d.offers.rejected).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Users list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('15+ users', () => pm.expect(pm.response.json().data.length).to.be.at.least(15));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create HOSPITAL user without hospitalId \u2192 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Nurse\",\n  \"email\": \"nurse.test@bedlink.demo\",\n  \"password\": \"Password1\",\n  \"role\": \"HOSPITAL\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "emergencyId",
+      "value": ""
+    },
+    {
+      "key": "offerId",
+      "value": ""
+    },
+    {
+      "key": "offerId2",
+      "value": ""
+    },
+    {
+      "key": "reservationId",
+      "value": ""
+    },
+    {
+      "key": "reservedBedId",
+      "value": ""
+    },
+    {
+      "key": "lakesideId",
+      "value": ""
+    },
+    {
+      "key": "bedId",
+      "value": ""
+    },
+    {
+      "key": "emergencyId2",
+      "value": ""
+    }
+  ]
+}

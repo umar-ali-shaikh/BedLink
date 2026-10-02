@@ -764,7 +764,7 @@ reservation in the DB.
 | HttpOnly cookie | `bl_token`; `httpOnly`, `secure` in prod, `sameSite: 'none'` in prod (Vercel ↔ Render are cross-site), `'lax'` in dev |
 | RBAC | `authorize(...roles)` on every route + ownership checks in services. Role is read from the DB user loaded in `authenticate`, never from the request body |
 | Input validation | Zod schemas for body, params, query; ObjectId and coordinate validators; enums from constants |
-| Rate limiting | `express-rate-limit`: login 10/min/IP; global 300/min/IP; accept/reject/request-hospital 30/min/user |
+| Rate limiting | `express-rate-limit`: login 10/min/IP (`LOGIN_RATE_LIMIT_PER_MINUTE`); global 300/min/IP; accept/reject/request-hospital 30/min/user |
 | CORS | Exact origin `CLIENT_ORIGIN`, `credentials: true`; same for Socket.IO |
 | Helmet | Default headers |
 | Env variables | Validated at boot by `config/env.js`; server refuses to start if missing |
@@ -791,6 +791,7 @@ reservation in the DB.
 | `OFFER_TIMEOUT_SECONDS` | `120` | handshake |
 | `RESERVATION_HOLD_MINUTES` | `30` | reservation |
 | `SWEEPER_INTERVAL_SECONDS` | `10` | timeout/expiry sweeper |
+| `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | login rate limit per IP (§14) |
 | `FRESHNESS_FRESH_SECONDS` | `120` | matching |
 | `FRESHNESS_RECENT_SECONDS` | `600` | matching |
 | `MATCH_MAX_ETA_MINUTES` | `60` | matching |
