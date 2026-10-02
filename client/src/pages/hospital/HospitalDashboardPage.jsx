@@ -1,7 +1,7 @@
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BellRing, Inbox } from 'lucide-react';
-import { useActiveReservations, useMyHospital, usePendingRequests } from '../../features/hospital/hooks';
+import { useActiveReservations, useHospitalRequests, useMyHospital, usePendingRequests } from '../../features/hospital/hooks';
 import { IncomingRequestSlot } from '../../features/hospital/IncomingRequestSlot';
 import { LoadControl } from '../../features/hospital/LoadControl';
 import { BedCounters } from '../../features/beds/BedCounters';
@@ -37,6 +37,8 @@ export function HospitalDashboardPage() {
   const hospital = useMyHospital();
   const pending = usePendingRequests();
   const reservations = useActiveReservations();
+  // Accepted offers carry the public caller's contact (shown only after the hospital accepted).
+  const accepted = useHospitalRequests(['ACCEPTED']);
   const { arrive, release } = useReservationMutations();
 
   const pendingList = pending.data?.requests ?? [];
@@ -116,6 +118,7 @@ export function HospitalDashboardPage() {
                 key={r.id}
                 reservation={r}
                 compact
+                caller={accepted.data?.requests.find((o) => o.reservation?.id === r.id)?.emergency?.caller}
                 actions={
                   <ReservationActions
                     size="lg"

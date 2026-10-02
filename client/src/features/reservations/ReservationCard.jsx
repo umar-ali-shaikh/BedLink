@@ -1,12 +1,12 @@
 import React from 'react';
-import { BedDouble, Lock } from 'lucide-react';
+import { BedDouble, Lock, Phone } from 'lucide-react';
 import { CountdownTimer } from '../../components/CountdownTimer';
 import { Button } from '../../components/Button';
 import { equipmentText } from '../../utils/labels';
 import { formatClock } from '../../utils/formatRelative';
 
 /** Held bed: label, hospital, "Held until 10:33" + hold countdown, role actions (DESIGN.md §5). */
-export function ReservationCard({ reservation, hospitalName, patientRef, offsetMs = 0, actions, compact }) {
+export function ReservationCard({ reservation, hospitalName, patientRef, offsetMs = 0, actions, compact, caller }) {
   if (!reservation) return null;
   const bed = reservation.bed;
   return (
@@ -31,6 +31,14 @@ export function ReservationCard({ reservation, hospitalName, patientRef, offsetM
           <Lock className="w-3 h-3" aria-hidden /> Reserved
         </span>
       </div>
+      {caller && (
+        <p className="mt-3 text-small text-text" data-testid="reservation-caller">
+          Caller {caller.name} ·{' '}
+          <a href={`tel:${caller.phone}`} className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+            <Phone className="w-3.5 h-3.5" aria-hidden /> {caller.phone}
+          </a>
+        </p>
+      )}
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-caption uppercase text-text-subtle">Held until {formatClock(reservation.expiresAt)}</p>

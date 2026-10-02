@@ -56,6 +56,27 @@ Defaults then give `SameSite=None; Secure` cookies and `trust proxy 1`.
 Serve `client/dist` and proxy `/api` and `/socket.io` (with WebSocket upgrade headers) to the
 server. Leave `VITE_API_URL`/`VITE_SOCKET_URL` unset; set `TRUST_PROXY=1`, `COOKIE_SAMESITE=lax`.
 
+## Public ambulance booking (`/book`)
+
+Patients and families book without an account at `/book` and follow progress at `/track/<token>`
+(the link is the caller's only credential; only its hash is stored). It needs nothing extra to
+deploy — the routes are in the same SPA and API — but check these settings:
+
+| Variable (server) | Default | Meaning |
+|---|---|---|
+| `BOOKING_OFFER_TIMEOUT_SECONDS` | `60` | accept window per ambulance before the next nearest is tried |
+| `AMBULANCE_LOCATION_MAX_AGE_SECONDS` | `120` | on-duty ambulances with an older GPS fix get no bookings |
+| `AMBULANCE_LOCATION_MIN_INTERVAL_SECONDS` | `10` | server-side floor between stored positions |
+| `BOOKING_RATE_LIMIT_PER_IP_PER_HOUR` | `10` | new bookings per IP per hour (needs a correct `TRUST_PROXY`) |
+| `BOOKING_RATE_LIMIT_PER_PHONE_PER_HOUR` | `5` | new bookings per phone number per hour |
+| `BOOKING_PII_RETENTION_DAYS` | `30` | closed bookings lose name, phone, notes and pickup after this long |
+| `BOOKING_PICKUP_RADIUS_METERS` | `100` | distance at which the ambulance "has reached" the caller |
+
+Client (`VITE_*`, build time): `VITE_AMBULANCE_LOCATION_INTERVAL_SECONDS` (default `10`, keep it at
+or above the server minimum). Ambulances share GPS only while **On duty** and need the browser's
+location permission over **HTTPS** (browsers refuse GPS on plain http except `localhost`).
+The retention purge runs inside the existing sweeper (hourly); there is no separate job.
+
 ## Checklist
 
 - [ ] `GET /api/health` → `{"success":true,"data":{"status":"ok"}}`
@@ -67,3 +88,5 @@ server. Leave `VITE_API_URL`/`VITE_SOCKET_URL` unset; set `TRUST_PROXY=1`, `COOK
 - [ ] Hospitals that register start PENDING — verify them with `npm run hospitals` (run it
       anywhere with the production `MONGO_URI`), or set `HOSPITAL_AUTO_VERIFY=true` for a demo
 - [ ] `REGISTRATION_ENABLED=false` closes sign-up if you need to
+- [ ] `/book` opens without logging in, and a booking with no on-duty ambulance shows "No ambulance available" + **Try again**
+- [ ] `TRUST_PROXY` is right (per-IP booking limit uses the client IP); the app is served over HTTPS (GPS needs it)

@@ -8,6 +8,7 @@ import { StatusIndicator } from '../../components/StatusIndicator';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
+import { CONDITION_LABELS } from '../../constants/booking';
 import { REJECT_REASON_LABELS } from '../../constants/emergency';
 import { requirementsText } from '../../utils/labels';
 import { formatClock } from '../../utils/formatRelative';
@@ -46,6 +47,7 @@ export function HospitalRequestsPage() {
               reservation={r}
               compact
               patientRef={all.find((o) => o.reservation?.id === r.id)?.emergency?.demoPatientId}
+              caller={all.find((o) => o.reservation?.id === r.id)?.emergency?.caller}
               actions={
                 <ReservationActions
                   size="lg"
@@ -76,6 +78,7 @@ export function HospitalRequestsPage() {
                       {r.emergency?.demoPatientId ?? 'Emergency'} <span className="font-normal text-text-subtle">· {formatClock(r.offeredAt)}</span>
                     </p>
                     <p className="text-small text-text-muted truncate">{requirementsText(r.emergency?.requirements)}</p>
+                    {r.emergency?.condition && <p className="text-[12px] text-text-subtle">Reported: {CONDITION_LABELS[r.emergency.condition] ?? r.emergency.condition}</p>}
                     {r.status === 'REJECTED' && r.rejectReason && <p className="text-[12px] text-text-subtle">Reason: {REJECT_REASON_LABELS[r.rejectReason]}</p>}
                     {r.reservation?.bed && <p className="text-[12px] text-text-subtle">Bed {r.reservation.bed.label} · {r.reservation.status.toLowerCase()}</p>}
                   </div>

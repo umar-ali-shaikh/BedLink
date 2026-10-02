@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Ambulance,
   Ban,
   Circle,
   CircleAlert,
@@ -10,6 +11,8 @@ import {
   Clock,
   Info,
   Lock,
+  MapPin,
+  Navigation,
   Search,
   Siren,
   Sparkles,
@@ -41,6 +44,15 @@ const MAP = {
     RESERVED: ['Bed reserved', 'success', Lock],
     COMPLETED: ['Patient arrived', 'success', CircleCheckBig],
     NO_MATCH: ['No hospital available', 'danger', CircleAlert],
+    CANCELLED: ['Cancelled', 'neutral', Ban],
+  },
+  booking: {
+    FINDING_AMBULANCE: ['Finding an ambulance', 'primary', Search],
+    NO_AMBULANCE: ['No ambulance available', 'danger', CircleAlert],
+    AMBULANCE_ASSIGNED: ['Ambulance assigned', 'success', Ambulance],
+    ON_THE_WAY: ['On the way', 'primary', Navigation],
+    AT_PICKUP: ['Ambulance has reached you', 'success', MapPin],
+    COMPLETED: ['Patient arrived', 'success', CircleCheckBig],
     CANCELLED: ['Cancelled', 'neutral', Ban],
   },
   urgency: {

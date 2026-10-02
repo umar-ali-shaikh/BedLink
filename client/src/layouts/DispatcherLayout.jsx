@@ -5,6 +5,9 @@ import { AppShell } from './AppShell';
 import { useAuth } from '../features/auth/useAuth';
 import { ROUTES } from '../constants/routes';
 import { AmbulanceVerificationBanner } from '../features/verification/AmbulanceVerificationBanner';
+import { DutyToggle } from '../features/duty/DutyToggle';
+import { useDutyLocationSharing } from '../features/duty/useDutyLocationSharing';
+import { IncomingBookingSlot } from '../features/bookingOffers/IncomingBookingSlot';
 
 const NAV = [
   { to: ROUTES.DISPATCHER_DASHBOARD, label: 'Overview', icon: LayoutGrid },
@@ -15,13 +18,21 @@ const NAV = [
 export function DispatcherLayout() {
   const { user } = useAuth();
   const vehicle = user?.ambulance;
+  // Mounted here (not on a page) so GPS sharing and booking offers keep working across pages.
+  const gps = useDutyLocationSharing();
   return (
     <AppShell
       nav={NAV}
       hub="Ambulance"
       section="Ambulance"
       roleLabel={vehicle ? `${vehicle.vehicleNumber} · ${vehicle.ambulanceType}` : 'Ambulance crew'}
-      banner={<AmbulanceVerificationBanner />}
+      banner={
+        <>
+          <AmbulanceVerificationBanner />
+          <IncomingBookingSlot />
+          <DutyToggle gps={gps} />
+        </>
+      }
       primaryAction={
         <Link
           to={ROUTES.DISPATCHER_NEW_EMERGENCY}

@@ -9,6 +9,7 @@ import { EmergencyTimeline } from '../../features/emergency/EmergencyTimeline';
 import { HospitalCard } from '../../features/dispatcher/HospitalCard';
 import { ExcludedList } from '../../features/dispatcher/ExcludedList';
 import { MapPanel } from '../../features/dispatcher/MapPanel';
+import { CallerCard } from '../../features/booking/CallerCard';
 import { emergencyApi } from '../../features/dispatcher/api';
 import { reservationsApi } from '../../features/reservations/api';
 import { ReservationActions, ReservationCard } from '../../features/reservations/ReservationCard';
@@ -156,6 +157,7 @@ export function EmergencyDetailPage() {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <div className="space-y-4 min-w-0">
+          <CallerCard booking={e.booking} />
           {activeReservation && (
             <ReservationCard
               reservation={activeReservation}

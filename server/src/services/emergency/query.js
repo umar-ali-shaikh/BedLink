@@ -1,11 +1,14 @@
 import { OFFER_STATUS, URGENCY_ORDER } from '../../constants/emergency.js';
 import { ROLES } from '../../constants/roles.js';
+import { ASSIGNED_BOOKING_STATUSES } from '../../constants/booking.js';
+import { bookingRepo } from '../../repositories/bookingRepo.js';
 import { emergencyRepo } from '../../repositories/emergencyRepo.js';
 import { hospitalRequestRepo } from '../../repositories/hospitalRequestRepo.js';
 import { reservationRepo } from '../../repositories/reservationRepo.js';
 import { timelineRepo } from '../../repositories/timelineRepo.js';
 import { forbidden } from '../../utils/AppError.js';
 import { idOf, sameId } from '../../utils/ids.js';
+import { ambulanceBookingView } from '../booking/views.js';
 import { isOwner, loadEmergency, wasContacted } from './access.js';
 
 /** Dispatcher: own emergencies; admin: all. `statuses` optional. */
@@ -49,10 +52,11 @@ export async function getEmergency(id, user) {
   }
   if (user.role !== ROLES.ADMIN && !isOwner(emergency, user)) throw forbidden('You can only view your own emergencies');
 
-  const [timeline, offers, reservation] = await Promise.all([
+  const [timeline, offers, reservation, booking] = await Promise.all([
     timelineRepo.listByEmergency(emergency._id),
     hospitalRequestRepo.findByEmergency(emergency._id),
     emergency.reservationId ? reservationRepo.findWithBed(emergency.reservationId) : null,
+    emergency.bookingId ? bookingRepo.findById(emergency.bookingId) : null,
   ]);
   const currentOffer = offers.find((o) => sameId(o._id, emergency.currentHospitalRequestId)) ?? null;
 
@@ -62,6 +66,8 @@ export async function getEmergency(id, user) {
     offers: offers.map((o) => o.toJSON()),
     currentOffer: currentOffer?.toJSON() ?? null,
     reservation: reservation ? reservationJSON(reservation) : null,
+    // Present when a public caller booked this ambulance: condition, pickup place and caller contact.
+    booking: booking ? ambulanceBookingView(booking, { revealCaller: true }) : null,
     serverNow: new Date(),
   };
 }
@@ -87,6 +93,9 @@ export async function listHospitalRequests(user, { statuses } = {}) {
   const reservations = acceptedIds.length ? await reservationRepo.findByHospitalRequestIds(acceptedIds) : [];
   const reservationByOffer = new Map(reservations.map((r) => [idOf(r.hospitalRequestId), reservationJSON(r)]));
 
+  const bookingIds = offers.map((o) => o.emergencyId?.bookingId).filter(Boolean);
+  const bookings = bookingIds.length ? await bookingRepo.findByIds(bookingIds) : [];
+  const bookingById = new Map(bookings.map((b) => [idOf(b), b]));
   const items = offers.map((offer) => {
     const json = offer.toJSON();
     const emergency = offer.emergencyId;
@@ -94,6 +103,14 @@ export async function listHospitalRequests(user, { statuses } = {}) {
     json.emergency = emergency?.requirements
       ? { requirements: emergency.requirements, urgency: emergency.urgency, demoPatientId: emergency.demoPatientId }
       : null;
+    const booking = bookingById.get(idOf(emergency?.bookingId));
+    if (json.emergency && booking) {
+      json.emergency.condition = booking.condition;
+      // Caller contact only once this hospital accepted, and only while the booking is live.
+      const reveal = offer.status === OFFER_STATUS.ACCEPTED && ASSIGNED_BOOKING_STATUSES.includes(booking.status);
+      const caller = ambulanceBookingView(booking, { revealCaller: reveal }).caller;
+      if (caller) json.emergency.caller = caller;
+    }
     json.reservation = reservationByOffer.get(idOf(offer)) ?? null;
     return json;
   });

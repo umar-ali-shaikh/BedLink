@@ -23,6 +23,8 @@ export const config = Object.freeze({
   /** Where maps open before any location is known (default: all of India). */
   mapCenter: Object.freeze({ lat: num(env.VITE_MAP_CENTER_LAT, 22.5), lng: num(env.VITE_MAP_CENTER_LNG, 79), zoom: num(env.VITE_MAP_ZOOM, 5) }),
 
+  /** Seconds between GPS fixes an on-duty ambulance sends (the server also throttles; keep ≥ its minimum). */
+  locationIntervalSeconds: num(env.VITE_AMBULANCE_LOCATION_INTERVAL_SECONDS, 10),
   // Mirrors of server matching settings — keep equal to the server env.
   freshSeconds: num(env.VITE_FRESHNESS_FRESH_SECONDS, 120),
   recentSeconds: num(env.VITE_FRESHNESS_RECENT_SECONDS, 600),

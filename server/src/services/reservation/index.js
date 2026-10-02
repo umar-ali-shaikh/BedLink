@@ -16,6 +16,8 @@ import { assertHospitalScope } from '../access.js';
 import { publishBedChange } from '../bed/index.js';
 import { emitEmergencyUpdated, notifyDispatcher, offerRooms } from '../emergency/events.js';
 import { SYSTEM_ACTOR, entry, record, userActor } from '../emergency/timeline.js';
+import { BOOKING_STATUS } from '../../constants/booking.js';
+import { closeBookingForEmergency } from '../booking/lifecycle.js';
 import { emit, notify } from '../notification/index.js';
 
 /**
@@ -261,6 +263,7 @@ export async function arriveReservation(id, user) {
     metadata: { bedLabel: bed?.label ?? null },
   });
   if (emergency) emitEmergencyUpdated(emergency, timelineEntry);
+  await closeBookingForEmergency(fulfilled.requestId, BOOKING_STATUS.COMPLETED, now);
   if (bed) await publishBedChange(fulfilled.hospitalId, bed);
   return fulfilled;
 }

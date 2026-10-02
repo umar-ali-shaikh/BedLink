@@ -7,6 +7,7 @@ import { useAuth } from '../features/auth/useAuth';
 import { ROLES } from '../constants/roles';
 import { HOME_BY_ROLE, ROUTES } from '../constants/routes';
 import { AuthLayout } from '../layouts/AuthLayout';
+import { PublicLayout } from '../layouts/PublicLayout';
 import { DispatcherLayout } from '../layouts/DispatcherLayout';
 import { HospitalLayout } from '../layouts/HospitalLayout';
 import { AdminLayout } from '../layouts/AdminLayout';
@@ -24,6 +25,8 @@ const RegisterAmbulancePage = lazy(() => import('../pages/register/RegisterAmbul
 const RegisterHospitalPage = lazy(() => import('../pages/register/RegisterHospitalPage').then((m) => ({ default: m.RegisterHospitalPage })));
 const HospitalProfilePage = lazy(() => import('../pages/hospital/HospitalProfilePage').then((m) => ({ default: m.HospitalProfilePage })));
 
+const BookingPage = lazy(() => import('../pages/booking/BookingPage').then((m) => ({ default: m.BookingPage })));
+const TrackingPage = lazy(() => import('../pages/booking/TrackingPage').then((m) => ({ default: m.TrackingPage })));
 const AdminVerificationsPage = lazy(() => import('../pages/admin/AdminVerificationsPage').then((m) => ({ default: m.AdminVerificationsPage })));
 
 function HomeRedirect() {
@@ -47,6 +50,10 @@ export default function App() {
             <Route path={ROUTES.REGISTER_HOSPITAL} element={<RegisterHospitalPage />} />
           </Route>
 
+          <Route element={<PublicLayout />}>
+            <Route path={ROUTES.BOOK} element={<BookingPage />} />
+            <Route path={ROUTES.TRACK} element={<TrackingPage />} />
+          </Route>
           <Route element={guard([ROLES.DISPATCHER], <DispatcherLayout />)}>
             <Route path={ROUTES.DISPATCHER_DASHBOARD} element={<DispatcherDashboardPage />} />
             <Route path={ROUTES.DISPATCHER_NEW_EMERGENCY} element={<NewEmergencyPage />} />

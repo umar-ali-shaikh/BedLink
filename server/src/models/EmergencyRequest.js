@@ -65,6 +65,8 @@ const emergencySchema = new mongoose.Schema(
     exclusions: { type: [exclusionSchema], default: [] },
     matchingDurationMs: { type: Number, default: null },
     reservationId: { type: ObjectId, ref: 'Reservation', default: null },
+    /** Set when the emergency was raised from a public booking. */
+    bookingId: { type: ObjectId, ref: 'Booking', default: null },
   },
   { timestamps: true, toJSON: jsonOptions({ patientLocation: 'patientLocation' }) }
 );

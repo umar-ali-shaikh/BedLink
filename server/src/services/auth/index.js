@@ -94,6 +94,8 @@ export async function describeUser(authUser) {
         ambulanceType: a.ambulanceType,
         organization: a.organization,
         verificationNote: user.verificationNote ?? '',
+        onDuty: a.onDuty ?? false,
+        locationAt: a.locationAt ?? null,
       };
     }
   }

@@ -28,9 +28,19 @@ const patientIcon = L.divIcon({
   html: '<div class="animate-pulse-ring" style="width:22px;height:22px;border-radius:999px;background:var(--color-primary);border:3px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.3)"></div>',
 });
 
-function FitBounds({ points, padding = 40 }) {
+/** Live ambulance (booking tracking): a solid square with a cross, distinct from the numbered hospitals. */
+const ambulanceIcon = L.divIcon({
+  className: 'bl-marker',
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+  popupAnchor: [0, -17],
+  html: '<div style="width:34px;height:34px;border-radius:8px;background:var(--color-success);border:2px solid #fff;box-shadow:0 4px 10px rgba(15,23,42,.3);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>',
+});
+
+/** Refits when the set of places changes (`fitKey`), not on every small ambulance move. */
+function FitBounds({ points, fitKey, padding = 40 }) {
   const map = useMap();
-  const key = points.map((p) => p.join(',')).join('|');
+  const key = fitKey ?? points.map((p) => p.join(',')).join('|');
   useEffect(() => {
     if (!points.length) return;
     if (points.length === 1) map.setView(points[0], 13);
@@ -48,17 +58,19 @@ const valid = (p) => p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng);
  * rank and coloured by confidence, selected larger with a ring, excluded grey (toggle).
  * `others` = plain hospital markers before a search. The list always mirrors the map.
  */
-export function MapPanel({ patientLocation, candidates = [], exclusions = [], others = [], selectedId, onSelect, className, pinLabel = 'Patient location', title = 'Map', showLegend = true }) {
+export function MapPanel({ patientLocation, candidates = [], exclusions = [], others = [], selectedId, onSelect, className, pinLabel = 'Patient location', title = 'Map', showLegend = true, ambulance, ambulanceLabel = 'Ambulance' }) {
   const [showExcluded, setShowExcluded] = useState(true);
   const patient = valid(patientLocation) ? [+patientLocation.lat, +patientLocation.lng] : null;
 
+  const ambulancePoint = valid(ambulance) ? [+ambulance.lat, +ambulance.lng] : null;
   const points = useMemo(() => {
     const pts = [];
     if (patient) pts.push(patient);
+    if (ambulancePoint) pts.push(ambulancePoint);
     candidates.forEach((c) => valid(c.coordinates) && pts.push([c.coordinates.lat, c.coordinates.lng]));
     if (!candidates.length) others.forEach((h) => valid(h.coordinates) && pts.push([h.coordinates.lat, h.coordinates.lng]));
     return pts;
-  }, [patient, candidates, others]);
+  }, [patient, ambulancePoint, candidates, others]);
 
   return (
     <div className={cn('relative bg-surface border border-border rounded-lg shadow-card overflow-hidden flex flex-col', className)}>
@@ -85,7 +97,7 @@ export function MapPanel({ patientLocation, candidates = [], exclusions = [], ot
       <div className="flex-1 min-h-[280px]">
         <MapContainer center={patient ?? [config.mapCenter.lat, config.mapCenter.lng]} zoom={patient ? 13 : config.mapCenter.zoom} scrollWheelZoom className="h-full w-full">
           <TileLayer attribution={config.mapAttribution} url={config.mapTileUrl} />
-          <FitBounds points={points} />
+          <FitBounds points={points} fitKey={ambulance !== undefined ? `${patient?.join(',')}:${ambulancePoint ? 'a' : ''}` : undefined} />
 
           {!candidates.length &&
             others.filter((h) => valid(h.coordinates)).map((h) => (
@@ -123,6 +135,13 @@ export function MapPanel({ patientLocation, candidates = [], exclusions = [], ot
             </Marker>
           ))}
 
+          {ambulancePoint && (
+            <Marker position={ambulancePoint} icon={ambulanceIcon} zIndexOffset={1500}>
+              <Tooltip direction="top" offset={[0, -14]}>
+                {ambulanceLabel}
+              </Tooltip>
+            </Marker>
+          )}
           {patient && (
             <Marker position={patient} icon={patientIcon} zIndexOffset={2000}>
               <Tooltip direction="top" offset={[0, -10]}>
