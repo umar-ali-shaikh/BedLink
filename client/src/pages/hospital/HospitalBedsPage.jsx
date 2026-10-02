@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BedDouble } from 'lucide-react';
+import { BedDouble, Plus, X } from 'lucide-react';
+import { AddBedForm } from '../../features/beds/AddBedForm';
+import { Button } from '../../components/Button';
 import { useActiveReservations, useMyBeds, useMyHospital, useMyHospitalId } from '../../features/hospital/hooks';
 import { BedTile } from '../../features/beds/BedTile';
 import { ConfirmAllButton } from '../../features/beds/ConfirmAllButton';
@@ -27,6 +29,7 @@ export function HospitalBedsPage() {
   const { isConnected } = useSocket();
   const [type, setType] = useState('ICU');
   const [pending, setPending] = useState({});
+  const [adding, setAdding] = useState(false);
 
   const list = beds.data ?? [];
   const counts = useMemo(() => Object.fromEntries(BED_TYPE_VALUES.map((t) => [t, list.filter((b) => b.type === t).length])), [list]);
@@ -74,10 +77,20 @@ export function HospitalBedsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-h2 text-text">Beds</h2>
-        <FreshnessIndicator timestamp={hospital.data?.bedSummary?.lastUpdatedAt} compact />
+        <div className="flex items-center gap-3">
+          <FreshnessIndicator timestamp={hospital.data?.bedSummary?.lastUpdatedAt} compact />
+          {list.length > 0 && (
+            <Button size="sm" variant={adding ? 'ghost' : 'secondary'} icon={adding ? X : Plus} onClick={() => setAdding((v) => !v)}>
+              {adding ? 'Close' : 'Add bed'}
+            </Button>
+          )}
+        </div>
       </div>
+      {(adding || (!beds.isLoading && !beds.isError && list.length === 0)) && (
+        <AddBedForm hospitalId={hospitalId} existingLabels={list.map((b) => b.label)} defaultType={type === 'ALL' ? 'ICU' : type} onDone={() => setAdding(true)} />
+      )}
 
       <div className="flex gap-1.5 overflow-x-auto -mx-4 px-4 pb-1" role="tablist" aria-label="Bed type">
         {tabs.map((t) => (
@@ -109,7 +122,7 @@ export function HospitalBedsPage() {
       ) : beds.isError ? (
         <ErrorState message={errorMessage(beds.error)} onRetry={beds.refetch} />
       ) : shown.length === 0 ? (
-        <EmptyState icon={BedDouble} title={`No ${type === 'ALL' ? '' : BED_TYPE_LABELS[type] + ' '}beds`} description="Ask an admin to add beds to your inventory." />
+        <EmptyState icon={BedDouble} title={`No ${type === 'ALL' ? '' : BED_TYPE_LABELS[type] + ' '}beds yet`} description="Add each bed once with the form above; then update its status with one tap." />
       ) : (
         <div className="space-y-3">
           {shown.map((bed) => (

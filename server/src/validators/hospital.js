@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { HOSPITAL_STATUS_VALUES, SPECIALTY_VALUES } from '../constants/hospital.js';
 import { coordinates, enumList, idParams } from './common.js';
+import { phone } from './auth.js';
 
 const hospitalFields = {
   name: z.string().trim().min(2).max(120),
@@ -9,6 +10,8 @@ const hospitalFields = {
   specialties: enumList(SPECIALTY_VALUES),
   currentLoad: z.number().int().min(0).max(100),
   status: z.enum(HOSPITAL_STATUS_VALUES),
+  phone,
+  contactName: z.string().trim().min(2).max(100),
 };
 
 export const listHospitalsSchema = {

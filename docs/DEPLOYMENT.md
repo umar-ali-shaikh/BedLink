@@ -65,3 +65,6 @@ server. Leave `VITE_API_URL`/`VITE_SOCKET_URL` unset; set `TRUST_PROXY=1`, `COOK
 - [ ] `VITE_SHOW_DEMO_ACCOUNTS=false` for anything beyond a demo
 - [ ] Free tiers sleep: hit `/api/health` a minute before a demo
 - [ ] `DNS_SERVERS=8.8.8.8,8.8.4.4` only if the host can't resolve Atlas SRV records
+- [ ] Hospitals that register start PENDING — verify them with `npm run hospitals` (run it
+      anywhere with the production `MONGO_URI`), or set `HOSPITAL_AUTO_VERIFY=true` for a demo
+- [ ] `REGISTRATION_ENABLED=false` closes sign-up if you need to

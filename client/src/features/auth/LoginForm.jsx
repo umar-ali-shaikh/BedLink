@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowRight, Eye, EyeOff, Lock } from 'lucide-react';
 import { useAuth } from './useAuth';
 import { Button } from '../../components/Button';
 import { Logo } from '../../components/Logo';
-import { HOME_BY_ROLE } from '../../constants/routes';
+import { HOME_BY_ROLE, ROUTES } from '../../constants/routes';
 import { errorMessage } from '../../services/api';
 
 import { config } from '../../config';
@@ -111,6 +111,15 @@ export function LoginForm() {
             </span>
           </Button>
         </form>
+
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <Link to={ROUTES.REGISTER_AMBULANCE} className="h-10 px-2 rounded-md border border-border text-[13px] font-semibold text-text flex items-center justify-center hover:border-primary hover:text-primary">
+            Register ambulance
+          </Link>
+          <Link to={ROUTES.REGISTER_HOSPITAL} className="h-10 px-2 rounded-md border border-border text-[13px] font-semibold text-text flex items-center justify-center hover:border-primary hover:text-primary">
+            Register hospital
+          </Link>
+        </div>
 
         <div className="mt-5 pt-4 border-t border-border flex items-center justify-between text-[12px] text-text-subtle">
           <span className="inline-flex items-center gap-1.5">

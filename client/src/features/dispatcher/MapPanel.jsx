@@ -56,7 +56,7 @@ const valid = (p) => p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng);
  * rank and coloured by confidence, selected larger with a ring, excluded grey (toggle).
  * `others` = plain hospital markers before a search. The list always mirrors the map.
  */
-export function MapPanel({ patientLocation, candidates = [], exclusions = [], others = [], selectedId, onSelect, onPickLocation, className }) {
+export function MapPanel({ patientLocation, candidates = [], exclusions = [], others = [], selectedId, onSelect, onPickLocation, className, pinLabel = 'Patient location', title = 'Map', showLegend = true }) {
   const [showExcluded, setShowExcluded] = useState(true);
   const patient = valid(patientLocation) ? [+patientLocation.lat, +patientLocation.lng] : null;
 
@@ -71,8 +71,8 @@ export function MapPanel({ patientLocation, candidates = [], exclusions = [], ot
   return (
     <div className={cn('relative bg-surface border border-border rounded-lg shadow-card overflow-hidden flex flex-col', className)}>
       <div className="flex items-center justify-between gap-2 px-4 h-11 border-b border-border text-small">
-        <span className="font-semibold text-text">Map</span>
-        <div className="flex items-center gap-3 text-[12px] text-text-muted">
+        <span className="font-semibold text-text">{title}</span>
+        <div className={cn('flex items-center gap-3 text-[12px] text-text-muted', !showLegend && 'hidden')}>
           <span className="hidden sm:inline-flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-primary" /> Patient
           </span>
@@ -135,7 +135,7 @@ export function MapPanel({ patientLocation, candidates = [], exclusions = [], ot
           {patient && (
             <Marker position={patient} icon={patientIcon} zIndexOffset={2000}>
               <Tooltip direction="top" offset={[0, -10]}>
-                Patient location
+                {pinLabel}
               </Tooltip>
             </Marker>
           )}

@@ -45,6 +45,7 @@ export async function listBeds(hospitalId, user) {
 }
 
 export async function createBed(hospitalId, data, user) {
+  assertHospitalScope(user, hospitalId);
   await loadHospital(hospitalId);
   let bed;
   try {

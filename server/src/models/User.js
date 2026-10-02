@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { AMBULANCE_TYPE_VALUES } from '../constants/ambulance.js';
 import { ROLES, ROLE_VALUES } from '../constants/roles.js';
 import { jsonOptions } from './plugins/toJSON.js';
 
@@ -21,8 +22,30 @@ const userSchema = new mongoose.Schema(
       },
     },
     isActive: { type: Boolean, default: true },
+    phone: { type: String, trim: true, default: '' },
+    /** Ambulance crew (role DISPATCHER) registration details. */
+    ambulance: {
+      type: new mongoose.Schema(
+        {
+          vehicleNumber: { type: String, trim: true, uppercase: true, required: true },
+          ambulanceType: { type: String, enum: AMBULANCE_TYPE_VALUES, required: true },
+          organization: { type: String, trim: true, default: '' },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
   },
   { timestamps: true, toJSON: jsonOptions() }
+);
+
+userSchema.index(
+  { 'ambulance.vehicleNumber': 1 },
+  {
+    unique: true,
+    partialFilterExpression: { 'ambulance.vehicleNumber': { $type: 'string' } },
+    name: 'unique_ambulance_vehicle',
+  }
 );
 
 export const User = mongoose.model('User', userSchema);

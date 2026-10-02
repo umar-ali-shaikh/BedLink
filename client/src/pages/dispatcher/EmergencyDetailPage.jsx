@@ -96,7 +96,7 @@ export function EmergencyDetailPage() {
     onError: (err) => showToast({ type: 'error', title: 'Could not release', message: errorMessage(err) }),
   });
 
-  const backTo = user?.role === ROLES.ADMIN ? ROUTES.ADMIN_EMERGENCIES : HOME_BY_ROLE[user?.role];
+  const backTo = HOME_BY_ROLE[user?.role] ?? ROUTES.DISPATCHER_DASHBOARD;
 
   if (query.isLoading) {
     return (

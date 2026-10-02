@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { LayoutGrid, Plus, Siren } from 'lucide-react';
 import { AppShell } from './AppShell';
+import { useAuth } from '../features/auth/useAuth';
 import { ROUTES } from '../constants/routes';
 
 const NAV = [
@@ -9,12 +10,16 @@ const NAV = [
   { to: ROUTES.DISPATCHER_NEW_EMERGENCY, label: 'New emergency', icon: Siren },
 ];
 
+/** Ambulance panel (API role DISPATCHER). */
 export function DispatcherLayout() {
+  const { user } = useAuth();
+  const vehicle = user?.ambulance;
   return (
     <AppShell
       nav={NAV}
-      section="Dispatcher"
-      roleLabel="Dispatcher"
+      hub="Ambulance"
+      section="Ambulance"
+      roleLabel={vehicle ? `${vehicle.vehicleNumber} · ${vehicle.ambulanceType}` : 'Ambulance crew'}
       primaryAction={
         <Link
           to={ROUTES.DISPATCHER_NEW_EMERGENCY}

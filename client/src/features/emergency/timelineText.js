@@ -50,5 +50,5 @@ export function actorLabel(entry, hospitalName) {
   if (entry.actor?.type === 'SYSTEM') return 'System';
   if (entry.actor?.role === 'HOSPITAL') return entry.metadata?.hospitalName ?? hospitalName ?? 'Hospital';
   if (entry.actor?.role === 'ADMIN') return 'Admin';
-  return 'Dispatcher';
+  return 'Ambulance';
 }

@@ -45,10 +45,30 @@ export async function resolveToken(token) {
 
 /** `/auth/me` payload: the user plus a hospital summary for HOSPITAL users. */
 export async function describeUser(authUser) {
-  const result = { ...authUser, hospital: null };
+  const result = { ...authUser, hospital: null, ambulance: null };
   if (authUser.role === ROLES.HOSPITAL && authUser.hospitalId) {
     const hospital = await hospitalRepo.findById(authUser.hospitalId);
-    if (hospital) result.hospital = { id: hospital._id.toString(), name: hospital.name, status: hospital.status };
+    if (hospital) {
+      result.hospital = {
+        id: hospital._id.toString(),
+        name: hospital.name,
+        status: hospital.status,
+        verificationStatus: hospital.verificationStatus,
+        verificationNote: hospital.verificationNote,
+        registrationNumber: hospital.registrationNumber ?? null,
+      };
+    }
+  }
+  if (authUser.role === ROLES.DISPATCHER) {
+    const user = await userRepo.findById(authUser.id);
+    const a = user?.ambulance;
+    if (a?.vehicleNumber) {
+      result.ambulance = {
+        vehicleNumber: a.vehicleNumber,
+        ambulanceType: a.ambulanceType,
+        organization: a.organization,
+      };
+    }
   }
   return result;
 }

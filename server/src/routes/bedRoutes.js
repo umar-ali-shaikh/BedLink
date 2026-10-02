@@ -21,7 +21,7 @@ router.get(
 router.post(
   '/hospitals/:id/beds',
   authenticate,
-  authorize(ADMIN),
+  authorize(ADMIN, HOSPITAL),
   validate(createBedSchema),
   asyncHandler(beds.create)
 );

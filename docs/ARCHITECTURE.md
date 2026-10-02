@@ -405,6 +405,8 @@ a conditional update `{ _id, status: 'PENDING' }`. Whoever writes first wins.
 | Method & path | Roles | Notes |
 |---|---|---|
 | `POST /api/auth/login` | public (rate-limited 10/min/IP) | Sets `bl_token`; returns user |
+| `POST /api/auth/register/ambulance` | public (rate-limited) | Creates an active DISPATCHER (ambulance) account with `{ vehicleNumber, ambulanceType, organization }`; signs in |
+| `POST /api/auth/register/hospital` | public (rate-limited) | `{ hospital, contact }` → Hospital (`verificationStatus: PENDING`, `status: INACTIVE`) + HOSPITAL user; signs in. Unverified hospitals are excluded from matching, `/hospitals` and `/hospitals/nearby` for non-admins. Verified with `npm run hospitals -- verify` |
 | `POST /api/auth/logout` | any authenticated | Clears cookie |
 | `GET /api/auth/me` | any authenticated | Current user (+ hospital summary for HOSPITAL) |
 
@@ -416,14 +418,14 @@ a conditional update `{ _id, status: 'PENDING' }`. Whoever writes first wins.
 | `GET /api/hospitals/nearby?lat=&lng=&radiusKm=` | ADMIN, DISPATCHER | Map markers, sorted by distance |
 | `GET /api/hospitals/:id` | ADMIN, DISPATCHER, HOSPITAL (own only) | |
 | `POST /api/hospitals` | ADMIN | Create |
-| `PATCH /api/hospitals/:id` | ADMIN (all fields); HOSPITAL own (`currentLoad` only) | |
+| `PATCH /api/hospitals/:id` | ADMIN (all fields); HOSPITAL own (`currentLoad`, `specialties`, `phone`, `contactName`) | |
 
 **Beds**
 
 | Method & path | Roles | Notes |
 |---|---|---|
 | `GET /api/hospitals/:id/beds` | ADMIN, DISPATCHER, HOSPITAL (own) | |
-| `POST /api/hospitals/:id/beds` | ADMIN | Add bed to inventory |
+| `POST /api/hospitals/:id/beds` | ADMIN, HOSPITAL (own) | Add bed to inventory |
 | `PATCH /api/beds/:id` | HOSPITAL (own), ADMIN | Body `{ status }`; cannot set/leave `RESERVED` |
 | `POST /api/hospitals/:id/beds/confirm` | HOSPITAL (own), ADMIN | "Confirm all": bumps `updatedAt` of non-reserved beds |
 

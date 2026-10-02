@@ -42,6 +42,12 @@ const envSchema = z.object({
    * SPA, so app + API share one origin (no CORS, first-party cookies, WebSockets work).
    */
   SERVE_CLIENT_DIR: z.string().optional(),
+  /** Public self-registration for ambulances and hospitals. */
+  REGISTRATION_ENABLED: bool.default(true),
+  /** Skip manual verification of self-registered hospitals (demos only). */
+  HOSPITAL_AUTO_VERIFY: bool.default(false),
+  /** Registration attempts per IP per hour. */
+  REGISTER_RATE_LIMIT_PER_HOUR: positiveInt.default(10),
   /** `npm run seed` wipes the database; in production it refuses unless this is true. */
   SEED_ALLOW_PRODUCTION: bool.default(false),
 
@@ -59,6 +65,20 @@ const envSchema = z.object({
   AVG_AMBULANCE_SPEED_KMPH: positiveNumber.default(30),
   ROAD_FACTOR: positiveNumber.default(1.3),
 });
+
+/**
+ * Browsers send only scheme://host[:port] as Origin, so `https://app.vercel.app/login/` must
+ * become `https://app.vercel.app` or CORS fails. Unparseable entries are kept as typed.
+ */
+function toOrigin(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed.replace(/\/+$/, '');
+  }
+}
 
 /** Parse and validate an env source. Throws an Error listing every problem. */
 export function loadEnv(source) {
@@ -83,9 +103,7 @@ export function loadEnv(source) {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
-    CLIENT_ORIGINS: parsed.CLIENT_ORIGIN.split(',')
-      .map((o) => o.trim())
-      .filter(Boolean),
+    CLIENT_ORIGINS: parsed.CLIENT_ORIGIN.split(',').map(toOrigin).filter(Boolean),
     isProduction,
     isTest: parsed.NODE_ENV === 'test',
   };

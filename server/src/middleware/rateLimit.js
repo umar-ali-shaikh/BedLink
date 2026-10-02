@@ -13,6 +13,13 @@ const base = {
 /** Login: LOGIN_RATE_LIMIT_PER_MINUTE per IP (default 10). */
 export const loginLimiter = rateLimit({ ...base, limit: () => env.LOGIN_RATE_LIMIT_PER_MINUTE });
 
+/** Self-registration: REGISTER_RATE_LIMIT_PER_HOUR per IP (default 10). */
+export const registerLimiter = rateLimit({
+  ...base,
+  windowMs: 60 * 60_000,
+  limit: () => env.REGISTER_RATE_LIMIT_PER_HOUR,
+});
+
 /** Everything: 300/min/IP. */
 export const globalLimiter = rateLimit({ ...base, limit: 300 });
 

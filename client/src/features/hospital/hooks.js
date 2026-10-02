@@ -73,7 +73,7 @@ export function useHospitalRealtime() {
         break;
       case SOCKET_EVENTS.HOSPITAL_REQUEST_CANCELLED:
         refreshRequests();
-        showToast({ type: 'info', title: 'Request withdrawn', message: 'The dispatcher cancelled this emergency.' });
+        showToast({ type: 'info', title: 'Request withdrawn', message: 'The ambulance crew cancelled this emergency.' });
         break;
       case SOCKET_EVENTS.HOSPITAL_TIMEOUT:
         refreshRequests();

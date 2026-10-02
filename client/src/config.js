@@ -11,9 +11,8 @@ const stripSlash = (v) => v?.replace(/\/+$/, '');
 
 function demoAccounts() {
   const fallback = [
-    { label: 'Dispatcher', email: 'dispatcher1@bedlink.demo', password: 'Dispatch@123' },
+    { label: 'Ambulance', email: 'dispatcher1@bedlink.demo', password: 'Dispatch@123' },
     { label: 'Hospital', email: 'lakeside@bedlink.demo', password: 'Hospital@123' },
-    { label: 'Admin', email: 'admin@bedlink.demo', password: 'Admin@123' },
   ];
   if (!env.VITE_DEMO_ACCOUNTS) return fallback;
   try {

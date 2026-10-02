@@ -20,7 +20,7 @@ const initials = (name = '') =>
  * OPERATIONS nav group and the user card at the bottom, a breadcrumb top bar with the live
  * indicator. Below 1024 px the sidebar becomes a drawer.
  */
-export function AppShell({ nav, section, roleLabel, primaryAction }) {
+export function AppShell({ nav, hub = 'Dispatch hub', section, roleLabel, primaryAction }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,7 +36,7 @@ export function AppShell({ nav, section, roleLabel, primaryAction }) {
   const sidebar = (
     <div className="flex flex-col h-full">
       <div className="h-16 px-4 flex items-center border-b border-border">
-        <Logo subtitle="Dispatch hub" />
+        <Logo subtitle={hub} />
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Main">
         <p className="px-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-text-subtle">Operations</p>

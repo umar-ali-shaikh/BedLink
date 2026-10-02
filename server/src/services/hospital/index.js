@@ -1,3 +1,4 @@
+import { UNVERIFIED_STATUSES } from '../../constants/hospital.js';
 import { ROLES } from '../../constants/roles.js';
 import { hospitalRepo } from '../../repositories/hospitalRepo.js';
 import { forbidden, notFound } from '../../utils/AppError.js';
@@ -7,7 +8,7 @@ import { summariesFor, summaryFor } from '../bed/summary.js';
 import { estimate, matchingConfig } from '../matching/index.js';
 
 /** Fields a HOSPITAL user may change on their own hospital. */
-const HOSPITAL_EDITABLE = new Set(['currentLoad']);
+const HOSPITAL_EDITABLE = new Set(['currentLoad', 'specialties', 'phone', 'contactName']);
 
 const withSummary = (hospital, summary) => ({ ...hospital.toJSON(), bedSummary: summary });
 
@@ -16,8 +17,11 @@ function toUpdate(changes) {
   return coordinates ? { ...rest, location: toPoint(coordinates) } : rest;
 }
 
-export async function listHospitals({ status } = {}) {
-  const hospitals = await hospitalRepo.list(status ? { status } : {});
+/** Ambulances only see verified hospitals; admins see everything (incl. pending). */
+export async function listHospitals({ status } = {}, user) {
+  const filter = status ? { status } : {};
+  if (user?.role !== ROLES.ADMIN) filter.verificationStatus = { $nin: [...UNVERIFIED_STATUSES] };
+  const hospitals = await hospitalRepo.list(filter);
   const summaries = await summariesFor(hospitals);
   return hospitals.map((h) => withSummary(h, summaries.get(h._id.toString())));
 }

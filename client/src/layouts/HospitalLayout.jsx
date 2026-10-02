@@ -1,24 +1,27 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { BedDouble, ChevronRight, Inbox, LayoutGrid, LogOut, Siren, Volume2, VolumeX } from 'lucide-react';
+import { BedDouble, Building2, ChevronRight, Inbox, LayoutGrid, LogOut, Siren, Volume2, VolumeX } from 'lucide-react';
 import { useAuth } from '../features/auth/useAuth';
 import { ConnectionBanner, LiveIndicator } from '../components/ConnectionBanner';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { ROUTES } from '../constants/routes';
 import { isSoundEnabled, setSoundEnabled } from '../features/hospital/alertSound';
 import { useHospitalRealtime, usePendingRequests } from '../features/hospital/hooks';
+import { VerificationBanner } from '../features/hospital/VerificationBanner';
 import { cn } from '../utils/cn';
 
 const TABS = [
   { to: ROUTES.HOSPITAL_DASHBOARD, label: 'Dashboard', icon: LayoutGrid },
   { to: ROUTES.HOSPITAL_BEDS, label: 'Beds', icon: BedDouble },
   { to: ROUTES.HOSPITAL_REQUESTS, label: 'Requests', icon: Inbox },
+  { to: ROUTES.HOSPITAL_PROFILE, label: 'Hospital', icon: Building2 },
 ];
 
 const SECTION = {
   [ROUTES.HOSPITAL_DASHBOARD]: 'Dashboard',
   [ROUTES.HOSPITAL_BEDS]: 'Beds',
   [ROUTES.HOSPITAL_REQUESTS]: 'Requests',
+  [ROUTES.HOSPITAL_PROFILE]: 'Hospital profile',
 };
 
 /** Mobile-first hospital shell (375 px baseline, max 560 px) from the Stitch beds screen. */
@@ -97,6 +100,7 @@ export function HospitalLayout() {
         </div>
 
         <main className="flex-1 px-4 pt-4 pb-28">
+          <VerificationBanner />
           <Outlet />
         </main>
 
@@ -119,7 +123,7 @@ export function HospitalLayout() {
                 <ChevronRight className="w-5 h-5" aria-hidden />
               </Link>
             )}
-            <nav className="bg-surface border-t border-border grid grid-cols-3 pb-[env(safe-area-inset-bottom)]" aria-label="Hospital">
+            <nav className="bg-surface border-t border-border grid grid-cols-4 pb-[env(safe-area-inset-bottom)]" aria-label="Hospital">
               {TABS.map(({ to, label, icon: Icon }) => (
                 <NavLink
                   key={to}

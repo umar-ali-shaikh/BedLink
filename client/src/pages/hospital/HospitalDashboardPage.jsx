@@ -89,7 +89,7 @@ export function HospitalDashboardPage() {
           {/* 3. Freshness + Confirm all */}
           <Card className="space-y-3">
             <FreshnessIndicator timestamp={h.bedSummary?.lastUpdatedAt ?? h.lastAvailabilityUpdate} />
-            <p className="text-small text-text-muted">Dispatchers rank you lower when availability is old. Confirm when nothing changed.</p>
+            <p className="text-small text-text-muted">Ambulances rank you lower when availability is old. Confirm when nothing changed.</p>
             <ConfirmAllButton hospitalId={h.id} className="w-full" />
           </Card>
 

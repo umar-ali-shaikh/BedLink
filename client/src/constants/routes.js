@@ -1,25 +1,26 @@
 import { ROLES } from './roles';
 
+/** Two panels: Ambulance (role DISPATCHER on the API) and Hospital. */
 export const ROUTES = Object.freeze({
   LOGIN: '/login',
-  DISPATCHER_DASHBOARD: '/dispatcher/dashboard',
-  DISPATCHER_NEW_EMERGENCY: '/dispatcher/emergency/new',
-  DISPATCHER_EMERGENCY_DETAIL: '/dispatcher/emergency/:id',
+  REGISTER: '/register',
+  REGISTER_AMBULANCE: '/register/ambulance',
+  REGISTER_HOSPITAL: '/register/hospital',
+  DISPATCHER_DASHBOARD: '/ambulance/dashboard',
+  DISPATCHER_NEW_EMERGENCY: '/ambulance/emergency/new',
+  DISPATCHER_EMERGENCY_DETAIL: '/ambulance/emergency/:id',
   HOSPITAL_DASHBOARD: '/hospital/dashboard',
   HOSPITAL_BEDS: '/hospital/beds',
   HOSPITAL_REQUESTS: '/hospital/requests',
-  ADMIN_DASHBOARD: '/admin/dashboard',
-  ADMIN_HOSPITALS: '/admin/hospitals',
-  ADMIN_USERS: '/admin/users',
-  ADMIN_EMERGENCIES: '/admin/emergencies',
-  ADMIN_EMERGENCY_DETAIL: '/admin/emergency/:id',
+  HOSPITAL_PROFILE: '/hospital/profile',
 });
 
-export const emergencyPath = (id, role = ROLES.DISPATCHER) =>
-  (role === ROLES.ADMIN ? ROUTES.ADMIN_EMERGENCY_DETAIL : ROUTES.DISPATCHER_EMERGENCY_DETAIL).replace(':id', id);
+export const emergencyPath = (id) => ROUTES.DISPATCHER_EMERGENCY_DETAIL.replace(':id', id);
 
 export const HOME_BY_ROLE = Object.freeze({
-  [ROLES.ADMIN]: ROUTES.ADMIN_DASHBOARD,
   [ROLES.DISPATCHER]: ROUTES.DISPATCHER_DASHBOARD,
   [ROLES.HOSPITAL]: ROUTES.HOSPITAL_DASHBOARD,
 });
+
+/** Roles that have a panel in this app (ADMIN is API/CLI-only). */
+export const PANEL_ROLES = [ROLES.DISPATCHER, ROLES.HOSPITAL];

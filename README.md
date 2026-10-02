@@ -75,13 +75,32 @@ In dev the browser only talks to Vite, which proxies `/api` and `/socket.io` to
 the hospital UI can be opened from a phone on the same network. All client settings are
 `VITE_*` variables in `client/.env.example`. Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-| Role | Screens |
-|---|---|
-| Dispatcher | `/dispatcher/dashboard`, `/dispatcher/emergency/new` (requirements · ranked hospitals · map), `/dispatcher/emergency/:id` (countdown, reservation, timeline) |
-| Hospital (mobile-first) | `/hospital/dashboard` (incoming request with Accept/Reject, counters, Confirm all, load), `/hospital/beds`, `/hospital/requests` |
-| Admin | `/admin/dashboard` (KPIs, outcomes chart, live emergencies, hospitals, CSV export), `/admin/hospitals` (create/edit + beds), `/admin/users`, `/admin/emergencies` |
+Two panels, each with public self-registration (`/register`):
 
-The login page has one-click demo account buttons (hide them with `VITE_SHOW_DEMO_ACCOUNTS=false`).
+| Panel | Screens |
+|---|---|
+| Ambulance (API role `DISPATCHER`) | `/register/ambulance`, `/ambulance/dashboard`, `/ambulance/emergency/new` (requirements · ranked hospitals · map), `/ambulance/emergency/:id` (countdown, reservation, timeline) |
+| Hospital (mobile-first) | `/register/hospital`, `/hospital/dashboard` (incoming request with Accept/Reject, counters, Confirm all, load), `/hospital/beds` (add beds, one-tap status), `/hospital/requests`, `/hospital/profile` |
+
+There is no admin panel. The login page has one-click demo account buttons (hide them with
+`VITE_SHOW_DEMO_ACCOUNTS=false`).
+
+### Hospital verification
+
+Self-registered hospitals are checked automatically (registration-number and ABDM HFR ID
+format, unique registration number / HFR ID / emails, no same-named hospital within 1 km) and
+then start **PENDING**: they can sign in and add beds, but ambulances can't see them until verified:
+
+```bash
+cd server
+npm run hospitals                                   # list pending registrations (with map link, phone)
+npm run hospitals -- verify MH/CE/2024/00123 "Checked state register, called reception"
+npm run hospitals -- reject <id> "Registration number not found in state register"
+```
+
+Check the registration number against the state Clinical Establishment register, the HFR ID at
+facility.abdm.gov.in, and call the official phone before verifying. `HOSPITAL_AUTO_VERIFY=true`
+skips this (demos only). Ambulances are active immediately; vehicle numbers are unique.
 
 ### Deploy
 

@@ -9,7 +9,6 @@ import { HOME_BY_ROLE, ROUTES } from '../constants/routes';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { DispatcherLayout } from '../layouts/DispatcherLayout';
 import { HospitalLayout } from '../layouts/HospitalLayout';
-import { AdminLayout } from '../layouts/AdminLayout';
 import { LoginPage } from '../pages/LoginPage';
 
 const DispatcherDashboardPage = lazy(() => import('../pages/dispatcher/DispatcherDashboardPage').then((m) => ({ default: m.DispatcherDashboardPage })));
@@ -18,15 +17,16 @@ const EmergencyDetailPage = lazy(() => import('../pages/dispatcher/EmergencyDeta
 const HospitalDashboardPage = lazy(() => import('../pages/hospital/HospitalDashboardPage').then((m) => ({ default: m.HospitalDashboardPage })));
 const HospitalBedsPage = lazy(() => import('../pages/hospital/HospitalBedsPage').then((m) => ({ default: m.HospitalBedsPage })));
 const HospitalRequestsPage = lazy(() => import('../pages/hospital/HospitalRequestsPage').then((m) => ({ default: m.HospitalRequestsPage })));
-const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
-const AdminHospitalsPage = lazy(() => import('../pages/admin/AdminHospitalsPage').then((m) => ({ default: m.AdminHospitalsPage })));
-const AdminUsersPage = lazy(() => import('../pages/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })));
-const AdminEmergenciesPage = lazy(() => import('../pages/admin/AdminEmergenciesPage').then((m) => ({ default: m.AdminEmergenciesPage })));
+
+const RegisterChoicePage = lazy(() => import('../pages/register/RegisterChoicePage').then((m) => ({ default: m.RegisterChoicePage })));
+const RegisterAmbulancePage = lazy(() => import('../pages/register/RegisterAmbulancePage').then((m) => ({ default: m.RegisterAmbulancePage })));
+const RegisterHospitalPage = lazy(() => import('../pages/register/RegisterHospitalPage').then((m) => ({ default: m.RegisterHospitalPage })));
+const HospitalProfilePage = lazy(() => import('../pages/hospital/HospitalProfilePage').then((m) => ({ default: m.HospitalProfilePage })));
 
 function HomeRedirect() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <FullPageLoader />;
-  return <Navigate to={user ? HOME_BY_ROLE[user.role] : ROUTES.LOGIN} replace />;
+  return <Navigate to={(user && HOME_BY_ROLE[user.role]) || ROUTES.LOGIN} replace />;
 }
 
 const guard = (roles, element) => <ProtectedRoute allowedRoles={roles}>{element}</ProtectedRoute>;
@@ -39,6 +39,9 @@ export default function App() {
           <Routes>
           <Route element={<AuthLayout />}>
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+            <Route path={ROUTES.REGISTER} element={<RegisterChoicePage />} />
+            <Route path={ROUTES.REGISTER_AMBULANCE} element={<RegisterAmbulancePage />} />
+            <Route path={ROUTES.REGISTER_HOSPITAL} element={<RegisterHospitalPage />} />
           </Route>
 
           <Route element={guard([ROLES.DISPATCHER], <DispatcherLayout />)}>
@@ -51,15 +54,9 @@ export default function App() {
             <Route path={ROUTES.HOSPITAL_DASHBOARD} element={<HospitalDashboardPage />} />
             <Route path={ROUTES.HOSPITAL_BEDS} element={<HospitalBedsPage />} />
             <Route path={ROUTES.HOSPITAL_REQUESTS} element={<HospitalRequestsPage />} />
+            <Route path={ROUTES.HOSPITAL_PROFILE} element={<HospitalProfilePage />} />
           </Route>
 
-          <Route element={guard([ROLES.ADMIN], <AdminLayout />)}>
-            <Route path={ROUTES.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
-            <Route path={ROUTES.ADMIN_HOSPITALS} element={<AdminHospitalsPage />} />
-            <Route path={ROUTES.ADMIN_USERS} element={<AdminUsersPage />} />
-            <Route path={ROUTES.ADMIN_EMERGENCIES} element={<AdminEmergenciesPage />} />
-            <Route path={ROUTES.ADMIN_EMERGENCY_DETAIL} element={<EmergencyDetailPage />} />
-          </Route>
 
           <Route path="*" element={<HomeRedirect />} />
         </Routes>

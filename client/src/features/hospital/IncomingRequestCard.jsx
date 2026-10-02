@@ -74,7 +74,7 @@ export function IncomingRequestCard({ request, offsetMs = 0, onAnswering, onSett
     onMutate: () => onAnswering?.(),
     onSuccess: () => {
       setRejecting(false);
-      finish({ ok: false, text: 'Rejected. The dispatcher is contacting the next hospital.' });
+      finish({ ok: false, text: 'Rejected. The ambulance is being routed to the next hospital.' });
     },
     onError: (err) => {
       setRejecting(false);

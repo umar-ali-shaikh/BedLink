@@ -42,7 +42,7 @@ export function EmergenciesTable({ emergencies = [], hospitalNames = {}, role, c
     <ResponsiveTable
       columns={columns}
       rows={emergencies}
-      onRowClick={(e) => navigate(emergencyPath(e.id, role))}
+      onRowClick={(e) => navigate(emergencyPath(e.id))}
       empty={<EmptyState icon={Siren} className="m-4" title="No active emergencies" description="Create one to find a bed." {...emptyAction} />}
     />
   );

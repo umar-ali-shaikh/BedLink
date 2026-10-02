@@ -65,7 +65,7 @@ export function HospitalRequestsPage() {
       <section>
         <h2 className="text-h3 text-text mb-3">Recent requests</h2>
         {recent.length === 0 ? (
-          <EmptyState icon={Inbox} title="No requests yet" description="Requests from dispatchers show up here with their outcome." />
+          <EmptyState icon={Inbox} title="No requests yet" description="Requests from ambulances show up here with their outcome." />
         ) : (
           <ul className="bg-surface border border-border rounded-lg divide-y divide-border">
             {recent.map((r) => (
