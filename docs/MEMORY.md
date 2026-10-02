@@ -25,7 +25,7 @@
 | **Completed** | All endpoints in ARCHITECTURE.md §8 + `GET /api/reservations`; all socket events in §9; matching engine §10; handshake/fallback/cancel §11; concurrency §13. Verified by `npm test` (83 tests: matching unit tests, API integration, double-accept concurrency with and without transactions, timeout → fallback, sweeper, sockets), `npm run lint`, `npm run format:check`, and a manual curl run of the full demo flow incl. server restart mid-offer. |
 | **Currently Working On** | — |
 | **Problems / Bugs** | Not yet verified against MongoDB Atlas or on Render (tested locally on MongoDB 8.3 single-node replica set). |
-| **Next Task** | Deploy: server to Render + Atlas (`npm run seed`), client to Vercel with `VITE_API_URL` / `VITE_SOCKET_URL`. Rehearse the PHASES.md demo script. |
+| **Next Task** | Deploy per docs/DEPLOYMENT.md (Render blueprint or Vercel + Render), seed Atlas, rehearse the PHASES.md demo script. |
 
 ### Files Changed
 
@@ -70,6 +70,7 @@ Recorded while writing the docs, so the code follows them from day one.
 | 19 | Socket payload | `bed:updated` for Confirm all sends `bedId: null` + `confirmed` count. | ARCH §9.3 |
 | 20 | Accept failure | In transaction mode a failed bed lock rolls the whole accept back, then the offer goes `PENDING → REJECTED (NO_BED_AT_ACCEPT)` and fallback runs; without transactions it goes `ACCEPTED → REJECTED` and the lock is compensated. | ARCH §11.3, §13.3 |
 | 21 | Rate limits | Disabled when `NODE_ENV=test` so the suite can log in repeatedly. | ARCH §14 |
+| 25 | Deployment | All deploy settings are env: server adds `HOST`, `TRUST_PROXY`, `COOKIE_*`, `SERVE_CLIENT_DIR`, `DNS_SERVERS` (the hardcoded 8.8.8.8 resolver in `server.js` is now opt-in), `SEED_ALLOW_PRODUCTION`; client reads every `VITE_*` in `src/config.js`. Recommended deploy is one service serving API + SPA (`render.yaml`) because cross-site cookies are blocked by Safari. | DEPLOYMENT.md, ARCH §15 |
 | 23 | Client dev | Vite proxies `/api` and `/socket.io` to the server, so dev is same-origin; `VITE_API_URL` / `VITE_SOCKET_URL` only needed for production builds. | ARCH §15 |
 | 24 | Client UI | Admin/dispatcher use a sidebar "Dispatch hub" shell and the hospital UI a mobile shell with bottom tabs, following the team's Stitch mockups on top of DESIGN.md tokens. Admin gets an extra `/admin/emergencies` list and reuses the emergency detail page at `/admin/emergency/:id`. | DESIGN §8 |
 | 22 | Rate limits | Login limit configurable via `LOGIN_RATE_LIMIT_PER_MINUTE` (default 10) so the full Postman collection (≈14 logins in a few seconds) can run locally. | ARCH §14–§15 |

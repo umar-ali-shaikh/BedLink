@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { connectDB, disconnectDB, ensureIndexes } from '../config/db.js';
+import { env } from '../config/env.js';
 import { HOSPITAL_STATUS } from '../constants/hospital.js';
 import { ROLES } from '../constants/roles.js';
 import { DEMO_PASSWORDS, SEED_HOSPITALS, SEED_USERS } from '../constants/seedData.js';
@@ -78,6 +79,11 @@ export async function seedDatabase({ now = new Date() } = {}) {
 
 /** `npm run seed` */
 async function main() {
+  if (env.isProduction && !env.SEED_ALLOW_PRODUCTION) {
+    console.error('\n[BedLink] Refusing to seed: NODE_ENV=production and seeding wipes every collection.');
+    console.error('Set SEED_ALLOW_PRODUCTION=true for this one command if you really mean it.\n');
+    process.exit(1);
+  }
   const started = Date.now();
   await connectDB();
   await ensureIndexes();

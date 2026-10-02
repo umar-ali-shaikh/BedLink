@@ -17,6 +17,7 @@ import { hospitalsApi } from '../../features/hospitals/api';
 import { hospitalRequestsApi } from '../../features/hospital/api';
 import { useNow } from '../../hooks/useNow';
 import { qk } from '../../services/queryKeys';
+import { config } from '../../config';
 import { ACTIVE_EMERGENCY_STATUSES } from '../../constants/emergency';
 import { ROLES } from '../../constants/roles';
 import { ROUTES } from '../../constants/routes';
@@ -71,7 +72,7 @@ export function AdminDashboardPage() {
     <>
       <PageHeader
         title="Overview"
-        subtitle="Today · Mumbai region"
+        subtitle={`Today · ${config.regionName}`}
         actions={
           <>
             <SyncPill hospitals={hospitals.data ?? []} />

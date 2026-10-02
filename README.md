@@ -21,6 +21,7 @@ Start with `docs/MEMORY.md` (current state), then:
 | [docs/PHASES.md](docs/PHASES.md) | Build plan with acceptance criteria and demo script |
 | [docs/DESIGN.md](docs/DESIGN.md) | Design system and screens |
 | [docs/MEMORY.md](docs/MEMORY.md) | Living project state |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Deploying (one-URL Render blueprint, Vercel + Render, reverse proxy) and every env variable |
 
 ## Repository layout
 
@@ -37,7 +38,7 @@ docs/     The six project documents
 Requires Node.js 20+ and MongoDB (Atlas, or a local replica set for transactions).
 
 ```bash
-cp .env.example .env          # repo root (server/.env also works and wins)
+cp .env.example .env          # server/.env.example has every variable
 # set MONGO_URI and a JWT_SECRET of at least 32 characters
 cd server
 npm install
@@ -71,9 +72,8 @@ npm run dev                   # http://localhost:5173 (proxies /api and /socket.
 
 In dev the browser only talks to Vite, which proxies `/api` and `/socket.io` to
 `VITE_PROXY_TARGET` (default `http://localhost:5000`), so cookies work with no CORS setup and
-the hospital UI can be opened from a phone on the same network. For a production build set
-`VITE_API_URL` (e.g. `https://bedlink-api.onrender.com/api`) and `VITE_SOCKET_URL`, then
-`npm run build`.
+the hospital UI can be opened from a phone on the same network. All client settings are
+`VITE_*` variables in `client/.env.example`. Deploying: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 | Role | Screens |
 |---|---|
@@ -82,6 +82,12 @@ the hospital UI can be opened from a phone on the same network. For a production
 | Admin | `/admin/dashboard` (KPIs, outcomes chart, live emergencies, hospitals, CSV export), `/admin/hospitals` (create/edit + beds), `/admin/users`, `/admin/emergencies` |
 
 The login page has one-click demo account buttons (hide them with `VITE_SHOW_DEMO_ACCOUNTS=false`).
+
+### Deploy
+
+Everything is configured by env (`server/.env.example`, `client/.env.example`). Fastest path:
+Render → New → Blueprint → this repo (`render.yaml`: one service serving API + app on one URL).
+Details and the Vercel + Render option: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Demo accounts
 

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { cn } from '../../utils/cn';
+import { config } from '../../config';
 
 const CONFIDENCE_COLOR = {
   HIGH: 'var(--color-success)',
@@ -90,8 +91,8 @@ export function MapPanel({ patientLocation, candidates = [], exclusions = [], ot
         </div>
       </div>
       <div className="flex-1 min-h-[280px]">
-        <MapContainer center={patient ?? [19.076, 72.8777]} zoom={12} scrollWheelZoom className="h-full w-full">
-          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <MapContainer center={patient ?? [config.defaultLocation.lat, config.defaultLocation.lng]} zoom={12} scrollWheelZoom className="h-full w-full">
+          <TileLayer attribution={config.mapAttribution} url={config.mapTileUrl} />
           <FitBounds points={points} />
           {onPickLocation && <ClickToPick onPick={onPickLocation} />}
 

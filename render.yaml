@@ -1,0 +1,31 @@
+# Render Blueprint — one web service that serves the API, Socket.IO AND the built client
+# from a single URL (first-party cookies, no CORS, works on iPhone Safari).
+# Render: New → Blueprint → pick this repo. Values marked `sync: false` are asked for on
+# first deploy. All settings: server/.env.example and client/.env.example.
+# Prefer client on Vercel + API on Render? See docs/DEPLOYMENT.md (option B).
+services:
+  - type: web
+    name: bedlink
+    runtime: node
+    plan: free
+    # --include=dev: the client build needs Vite even though NODE_ENV=production.
+    buildCommand: cd client && npm ci --include=dev && npm run build && cd ../server && npm ci --omit=dev
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_ORIGIN
+        sync: false # this service's own URL, e.g. https://bedlink.onrender.com
+      - key: SERVE_CLIENT_DIR
+        value: ../client/dist
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: MONGO_TRANSACTIONS
+        value: 'true'
+      - key: VITE_SHOW_DEMO_ACCOUNTS
+        value: 'true'

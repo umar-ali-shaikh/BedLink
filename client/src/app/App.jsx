@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Providers } from './providers';
+import { config } from '../config';
 import { FullPageLoader, ProtectedRoute } from './ProtectedRoute';
 import { useAuth } from '../features/auth/useAuth';
 import { ROLES } from '../constants/roles';
@@ -32,7 +33,7 @@ const guard = (roles, element) => <ProtectedRoute allowedRoles={roles}>{element}
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={config.basePath}>
       <Providers>
         <Suspense fallback={<FullPageLoader />}>
           <Routes>

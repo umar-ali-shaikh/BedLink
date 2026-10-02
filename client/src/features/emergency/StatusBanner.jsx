@@ -14,7 +14,7 @@ const LOOK = {
 };
 
 /** Status line → hospital → giant countdown (DESIGN.md §8.2 detail, §8.4). */
-export function StatusBanner({ emergency, hospitalName, offsetMs, offerWindowSeconds = 120 }) {
+export function StatusBanner({ emergency, hospitalName, offsetMs }) {
   const look = LOOK[emergency.status] ?? LOOK.SEARCHING;
   const Icon = look.icon;
   const offer = emergency.currentOffer;
@@ -43,7 +43,7 @@ export function StatusBanner({ emergency, hospitalName, offsetMs, offerWindowSec
       {emergency.status === 'AWAITING_HOSPITAL' && offer?.expiresAt && (
         <div className="sm:text-right sm:min-w-[160px]">
           <p className="text-caption uppercase text-text-muted">Time to respond</p>
-          <CountdownTimer expiresAt={offer.expiresAt} offsetMs={offsetMs} totalSeconds={offerWindowSeconds} showBar className="w-full" />
+          <CountdownTimer expiresAt={offer.expiresAt} offsetMs={offsetMs} totalSeconds={offer.offeredAt ? (new Date(offer.expiresAt) - new Date(offer.offeredAt)) / 1000 : undefined} showBar className="w-full" />
         </div>
       )}
     </section>

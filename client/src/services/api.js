@@ -1,11 +1,12 @@
 import axios from 'axios';
+import { config } from '../config';
 
 /**
  * Axios instance (ARCHITECTURE.md §4). Cookie auth (`bl_token`) needs withCredentials.
  * Resolves to the `data` of `{ success, data }`; rejects with `{ message, code, status, details }`.
  */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: config.apiUrl,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
   timeout: 20000,

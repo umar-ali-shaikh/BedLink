@@ -11,6 +11,7 @@ import { Skeleton } from '../../components/Skeleton';
 import { useNow } from '../../hooks/useNow';
 import { errorMessage } from '../../services/api';
 import { hospitalHealth } from './health';
+import { config } from '../../config';
 import { cn } from '../../utils/cn';
 
 const count = (n) => <span className={cn('tabular-nums font-semibold', n > 0 ? 'text-success' : 'text-danger')}>{n ?? 0}</span>;
@@ -48,7 +49,7 @@ export function HospitalsTable({ query, title = 'Hospitals', onRowClick, actions
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-4 pb-3">
         <div>
           <h2 className="text-[15px] font-semibold text-text">{title}</h2>
-          <p className="text-small text-text-subtle">{hospitals.length} facilities monitored in the Mumbai metropolitan region</p>
+          <p className="text-small text-text-subtle">{hospitals.length} facilities monitored · {config.regionName}</p>
         </div>
         <div className="flex items-center gap-2">
           <label className="relative block sm:w-72">

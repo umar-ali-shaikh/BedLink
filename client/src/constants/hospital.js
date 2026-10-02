@@ -1,3 +1,5 @@
+import { config } from '../config';
+
 export const SPECIALTIES = Object.freeze({
   CARDIOLOGY: 'CARDIOLOGY',
   BURNS: 'BURNS',
@@ -25,8 +27,8 @@ export const LOAD_PRESETS = [
   { label: 'Critical', value: 95 },
 ];
 
-/** Mirrors server MATCH_CRITICAL_LOAD default. */
-export const CRITICAL_LOAD = 95;
+/** Mirrors server MATCH_CRITICAL_LOAD (VITE_MATCH_CRITICAL_LOAD). */
+export const CRITICAL_LOAD = config.criticalLoad;
 
-/** Default demo patient location (server SEED_PATIENT_LOCATION, Mumbai). */
-export const DEFAULT_PATIENT_LOCATION = Object.freeze({ lat: 19.076, lng: 72.8777 });
+/** Default patient location (VITE_DEFAULT_LAT / VITE_DEFAULT_LNG). */
+export const DEFAULT_PATIENT_LOCATION = config.defaultLocation;

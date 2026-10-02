@@ -7,13 +7,11 @@ import { Logo } from '../../components/Logo';
 import { HOME_BY_ROLE } from '../../constants/routes';
 import { errorMessage } from '../../services/api';
 
-/** Seeded demo accounts (server `npm run seed`). Demo-only passwords. */
-const DEMO_ACCOUNTS = [
-  { label: 'Dispatcher', email: 'dispatcher1@bedlink.demo', password: 'Dispatch@123' },
-  { label: 'Hospital', email: 'lakeside@bedlink.demo', password: 'Hospital@123' },
-  { label: 'Admin', email: 'admin@bedlink.demo', password: 'Admin@123' },
-];
-const SHOW_DEMO = import.meta.env.VITE_SHOW_DEMO_ACCOUNTS !== 'false';
+import { config } from '../../config';
+
+/** Quick-fill buttons for seeded demo accounts (VITE_DEMO_ACCOUNTS / VITE_SHOW_DEMO_ACCOUNTS). */
+const DEMO_ACCOUNTS = config.demoAccounts;
+const SHOW_DEMO = config.showDemoAccounts && DEMO_ACCOUNTS.length > 0;
 
 export function LoginForm() {
   const { login } = useAuth();
@@ -118,7 +116,7 @@ export function LoginForm() {
           <span className="inline-flex items-center gap-1.5">
             <Lock className="w-3.5 h-3.5" aria-hidden /> Secure session cookie
           </span>
-          <span>v0.1.0</span>
+          <span>v{config.appVersion}</span>
         </div>
       </div>
 

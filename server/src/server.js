@@ -1,7 +1,4 @@
-import dns from "node:dns";
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
-dns.setDefaultResultOrder("ipv4first");
-
+import dns from 'node:dns';
 import http from 'node:http';
 import { env } from './config/env.js';
 import { connectDB, disconnectDB, ensureIndexes } from './config/db.js';
@@ -12,7 +9,14 @@ import { clearAllOfferTimeouts, restorePendingTimers } from './services/emergenc
 import { startSweeper, stopSweeper, sweepOnce } from './services/sweeper.js';
 import { errorMeta, logger } from './utils/logger.js';
 
+/** Opt-in DNS override (DNS_SERVERS) for networks whose resolver can't look up Atlas SRV records. */
+function configureDns() {
+  dns.setDefaultResultOrder('ipv4first');
+  if (env.DNS_SERVER_LIST.length) dns.setServers(env.DNS_SERVER_LIST);
+}
+
 async function start() {
+  configureDns();
   await connectDB();
   await ensureIndexes();
 
@@ -25,8 +29,13 @@ async function start() {
   const restored = await restorePendingTimers();
   startSweeper();
 
-  server.listen(env.PORT, () => {
-    logger.info('server.listening', { port: env.PORT, env: env.NODE_ENV, restoredOfferTimers: restored });
+  server.listen(env.PORT, env.HOST, () => {
+    logger.info('server.listening', {
+      host: env.HOST,
+      port: env.PORT,
+      env: env.NODE_ENV,
+      restoredOfferTimers: restored,
+    });
   });
 
   let shuttingDown = false;

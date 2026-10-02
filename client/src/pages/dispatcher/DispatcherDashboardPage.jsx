@@ -14,6 +14,7 @@ import { useOpsRealtime } from '../../features/dispatcher/useOpsRealtime';
 import { emergencyApi } from '../../features/dispatcher/api';
 import { hospitalsApi } from '../../features/hospitals/api';
 import { qk } from '../../services/queryKeys';
+import { config } from '../../config';
 import { errorMessage } from '../../services/api';
 import { ACTIVE_EMERGENCY_STATUSES } from '../../constants/emergency';
 import { ROLES } from '../../constants/roles';
@@ -43,7 +44,7 @@ export function DispatcherDashboardPage() {
     <>
       <PageHeader
         title="Overview"
-        subtitle="Today · Mumbai region"
+        subtitle={`Today · ${config.regionName}`}
         actions={
           <Link to={ROUTES.DISPATCHER_NEW_EMERGENCY} className="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-primary text-text-inverse text-small font-semibold hover:bg-primary-hover">
             <Plus className="w-4 h-4" aria-hidden /> New emergency

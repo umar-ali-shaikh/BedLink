@@ -800,9 +800,17 @@ reservation in the DB.
 | `CONFIDENCE_TIMEOUT_WINDOW_MINUTES` | `30` | confidence downgrade window (§10.5) |
 | `AVG_AMBULANCE_SPEED_KMPH` | `30` | eta |
 | `ROAD_FACTOR` | `1.3` | eta |
+| `HOST` | `0.0.0.0` | server listen address |
+| `LOG_LEVEL` | `info` | logger |
+| `TRUST_PROXY` | `1` in production, else `0` | Express `trust proxy` hops |
+| `COOKIE_SAMESITE` / `COOKIE_SECURE` / `COOKIE_DOMAIN` | `none`+secure in production, `lax` otherwise / — | auth cookie (§14) |
+| `SERVE_CLIENT_DIR` | — | optional: server also serves the built SPA (one-origin deploy) |
+| `DNS_SERVERS` | — | optional DNS override for Atlas SRV lookups |
+| `SEED_ALLOW_PRODUCTION` | `false` | `npm run seed` refuses in production unless true |
 | `VITE_API_URL` | `/api` (Vite dev proxy) | client — set to the deployed API for production builds |
 | `VITE_SOCKET_URL` | page origin (Vite dev proxy) | client — set to the deployed server for production builds |
 | `VITE_PROXY_TARGET` | `http://localhost:5000` | client dev server proxy target |
+| other `VITE_*` | see `client/.env.example` | region name, default location, demo accounts, freshness/critical-load mirrors, map tiles, base path |
 
 ---
 

@@ -15,7 +15,9 @@ import { formatClock } from '../../utils/formatRelative';
 import { formatDistance } from '../../utils/formatEta';
 import { cn } from '../../utils/cn';
 
-const OFFER_WINDOW_SECONDS = 120;
+/** The offer window comes from the server (OFFER_TIMEOUT_SECONDS): expiresAt − offeredAt. */
+const windowSeconds = (offer) =>
+  offer?.offeredAt && offer?.expiresAt ? (new Date(offer.expiresAt) - new Date(offer.offeredAt)) / 1000 : undefined;
 
 const URGENCY_BAR = { CRITICAL: 'bg-danger', HIGH: 'bg-warning', MODERATE: 'bg-neutral-state' };
 
@@ -101,7 +103,7 @@ export function IncomingRequestCard({ request, offsetMs = 0, onAnswering, onSett
         <p className="text-caption uppercase tracking-wider font-bold text-text-muted">
           Request pending · <span className={urgency === 'CRITICAL' ? 'text-danger' : urgency === 'HIGH' ? 'text-warning' : 'text-text-muted'}>{urgency}</span>
         </p>
-        <CountdownTimer expiresAt={request.expiresAt} offsetMs={offsetMs} totalSeconds={OFFER_WINDOW_SECONDS} showBar className="mt-2 w-full items-center" />
+        <CountdownTimer expiresAt={request.expiresAt} offsetMs={offsetMs} totalSeconds={windowSeconds(request)} showBar className="mt-2 w-full items-center" />
         <p className="mt-4 text-h3 text-text">{requirementsText(request.emergency?.requirements)}</p>
         <p className="mt-2 text-body text-text">
           <Ambulance className="w-5 h-5 text-primary inline-block align-[-4px] mr-1.5" aria-hidden />

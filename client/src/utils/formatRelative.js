@@ -1,3 +1,5 @@
+import { config } from '../config';
+
 const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
 
 /** "32 seconds ago" / "14 minutes ago" (DESIGN.md §12). */
@@ -38,11 +40,11 @@ export const formatDuration = (totalSeconds) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-/** Freshness tier from age, mirroring server defaults (120 s / 600 s). */
+/** Freshness tier from age, mirroring server FRESHNESS_* settings (VITE_FRESHNESS_*). */
 export function freshnessOf(dateInput, now = Date.now()) {
   if (!dateInput) return 'STALE';
   const age = (now - new Date(dateInput).getTime()) / 1000;
-  if (age <= 120) return 'FRESH';
-  if (age <= 600) return 'RECENT';
+  if (age <= config.freshSeconds) return 'FRESH';
+  if (age <= config.recentSeconds) return 'RECENT';
   return 'STALE';
 }
