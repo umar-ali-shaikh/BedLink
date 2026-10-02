@@ -50,7 +50,7 @@ export async function verificationSummary() {
       await Promise.all(
         Object.values(VERIFICATION_STATUS).map(async (s) => [
           s,
-          await Model.countDocuments({ ...extra, verificationStatus: s }),
+          await Model.countDocuments({ ...extra, ...statusFilter(s) }),
         ])
       )
     );
